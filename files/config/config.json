@@ -4,9 +4,9 @@
 	"brokerURL":"mrred4fjoz.messaging.solace.cloud",
 	"brokerPort": 1883,
 	"brokerUsername":"solace-cloud-client",
-	"brokerPassword":"g245vj1tkr2v7ha6ho5uj9sp4h",
+	"brokerPassword":"change_me",
 	"mqttClientId":"default",
 	"wlanSSID":"BTHub5-3X26",
-	"wlanPSK":"2af729ce8c",
+	"wlanPSK":"change_me",
 	"baseTopic": "BCW/solacebooth/racetrack"
 }
