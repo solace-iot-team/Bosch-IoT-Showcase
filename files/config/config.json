@@ -1,0 +1,12 @@
+{
+	"sntpURL":"0.uk.pool.ntp.org",
+	"sntpPort": 123,
+	"brokerURL":"mrred4fjoz.messaging.solace.cloud",
+	"brokerPort": 1883,
+	"brokerUsername":"solace-cloud-client",
+	"brokerPassword":"change_me",
+	"mqttClientId":"default",
+	"wlanSSID":"BTHub5-3X26",
+	"wlanPSK":"change_me",
+	"baseTopic": "BCW/solacebooth/racetrack"
+}
