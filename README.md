@@ -7,7 +7,7 @@
   - **SL Corporation:RTView**, a real-time dashboard for visualizing the XDK sensor data (https://sl.com/products/rtview-cloud-for-iot/)
   - **Datawatch:Panopticon**, a streaming analytics tool to analyze the XDK sensor data in real-time (https://www.datawatch.com/our-platform/panopticon-streaming-analytics/)
   - **Dell Boomi:Flow**, a web-based user application to command & control the XDK App (https://boomi.com/platform/flow/)
-  - **Solace:Solace Cloud, to provide the event mesh (https://solace.com/cloud/)
+  - **Solace:Solace Cloud**, to provide the event mesh (https://solace.com/cloud/)
 
 For more details visit the Wiki page on this site.
 
@@ -25,8 +25,15 @@ Here is what you need before you can get started:
 - A MQTT test client
 > - for example, MQTT Box from http://workswithweb.com/mqttbox.html
 
-## Install the Solace MQTT XDK App
+## Install the Solace MQTT XDK App on the XDK110
 
 1. number on
 2. nubmer two
-3.
+
+## View the sensor data
+
+## View the Solace event mesh
+
+## Interact with the XDK110
+
+## Analyze the sensor data
