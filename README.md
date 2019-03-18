@@ -27,13 +27,42 @@ Here is what you need before you can get started:
 
 ## Install the Solace MQTT XDK App on the XDK110
 
-1. number on
-2. nubmer two
+### Clone the repository to your local system
+This will create the following structure:
+
+![project_file_structure](doc/images/project_file_structure.png?raw=true "Project file structure")
+
+### Patch the XDK SDK
+Go to the install directory of the XDK Workbench. On a Mac it is here:
+
+![xdk_workbench_install_dir_mac](doc/images/xdk_workbench_install_dir_mac.png?raw=true "xdk_workbench_install_dir_mac")
+
+1. go into the folder (mac: right-click, show package contents)
+2. go to: ````Contents/Eclipse/SDK/xdk110/Common/include/Connectivity````
+  replace XDK_MQTT.h with the version from the repository
+3. go to: ````Contents/Eclipse/SDK/xdk110/Common/source/Connectivity````
+replace MQTT.c with the version from the repository
+
+Note: this adds the MQTT user/pwd authentication API to the SDK.
+
+### Compile the SolaceBoschXDKApp
+
+Open the XDK Workbench and open the project:
+
+![open_project](doc/images/open_project.png?raw=true "open_project")
+
+Click 'Directory ...' and select the directory with the XDK Workbench Eclipse Project
+![import_project](doc/images/import_project.png?raw=true "import_project")
+
+!!! missing .cproject and .project 
+
 
 ## View the sensor data
 
 ## View the Solace event mesh
 
 ## Interact with the XDK110
+- using the Boomi Flow application (http://boomi.to/solace)
+- details in the Wiki
 
 ## Analyze the sensor data
