@@ -35,5 +35,7 @@ Here is what you need before you can get started:
 ## View the Solace event mesh
 
 ## Interact with the XDK110
+- using the Boomi Flow application (http://boomi.to/solace)
+- details in the Wiki
 
 ## Analyze the sensor data
