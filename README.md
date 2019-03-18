@@ -27,6 +27,12 @@ Here is what you need before you can get started:
 
 ## Install the Solace MQTT XDK App on the XDK110
 
+### Clone the repository to your local system
+This will create the following structure:
+
+![project_file_structure](doc/images/project_file_structure.png?raw=true "Project file structure")
+
+
 1. number on
 2. nubmer two
 
