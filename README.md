@@ -2,9 +2,9 @@
 
 ## Overview
 - The XDK 110 is a programmable sensor. See details here: http://xdk.bosch-connectivity.com/. "I’m a programmable sensor device & a prototyping platform for any IoT use case you can imagine."
-- We have developed a client (the Solace MQTT XDK App) which connects via MQTT to the event mesh.
-- with our partners we have created a few user / business applications:
-  - **SL Corporation:RTView**, a real-time dashboard for visualizing the XDK sensor data (https://sl.com/products/rtview-cloud-for-iot/)
+- We have developed a client (the **_Solace Bosch XDK App_**) which connects via MQTT to the event mesh.
+- With our partners we have created a few user / business applications:
+  - **SL Corporation:RTView**, a real-time dashboard for visualizing the XDK sensor data (https://sl.com/products/rtview-cloud-for-iot/) and a live visual representation of the event mesh
   - **Datawatch:Panopticon**, a streaming analytics tool to analyze the XDK sensor data in real-time (https://www.datawatch.com/our-platform/panopticon-streaming-analytics/)
   - **Dell Boomi:Flow**, a web-based user application to command & control the XDK App (https://boomi.com/platform/flow/)
   - **Solace:Solace Cloud**, to provide the event mesh (https://solace.com/cloud/)
@@ -14,16 +14,16 @@ For more details visit the Wiki page on this site.
 ## What you need
 Here is what you need before you can get started:
 - Bosch XDK 110 + Micro SD Card + SD Card Adapter
-> - go to https://xdk.bosch-connectivity.com/buy-xdk to find a retailer.
-> - XDK110
-> - Micro SD card 32GB (not more)
-> - SD Card Adapter to write / edit the config file onto the SD card from your computer
+> - Go to https://xdk.bosch-connectivity.com/buy-xdk to find a retailer.
+  >   - XDK110
+  >   - Micro SD card 32GB (not more)
+  >   - SD Card Adapter to write / edit the config file onto the SD card from your computer
 - XDK Workbench, version 3.5.x
-> - once your XDK has arrived:
+> - Once your XDK has arrived:
 >   - register on https://xdk.bosch-connectivity.com/
 >   - download and install the XDK Workbench (you need the serial number of your XDK110 device)
 - A MQTT test client
-> - for example, MQTT Box from http://workswithweb.com/mqttbox.html
+> - For example, MQTT Box from http://workswithweb.com/mqttbox.html
 
 ## Install the Solace MQTT XDK App on the XDK110
 
@@ -39,11 +39,11 @@ Go to the install directory of the XDK Workbench. On a Mac it is here:
 
 1. go into the folder (mac: right-click, show package contents)
 2. go to: ````Contents/Eclipse/SDK/xdk110/Common/include/Connectivity````
-  replace XDK_MQTT.h with the version from the repository
+  replace ```` XDK_MQTT.h ```` with the version from the repository
 3. go to: ````Contents/Eclipse/SDK/xdk110/Common/source/Connectivity````
-replace MQTT.c with the version from the repository
+replace ```` MQTT.c ```` with the version from the repository
 
-Note: this adds the MQTT user/pwd authentication API to the SDK.
+_Note: this adds the MQTT user/pwd authentication API to the SDK._
 
 ### Compile the SolaceBoschXDKApp
 
@@ -52,10 +52,13 @@ Open the XDK Workbench and open the project:
 ![open_project](doc/images/open_project.png?raw=true "open_project")
 
 Click 'Directory ...' and select the directory with the XDK Workbench Eclipse Project
+
 ![import_project](doc/images/import_project.png?raw=true "import_project")
 
 Build the project:
+
 ![build_project](doc/images/build_project.png?raw=true "build_project")
+
 This creates the binary SolaceBoschXDKApp.bin. Note that it is compiled in debug mode, see the Makefile to change to release mode.
 
 ### Copy the Config file
@@ -65,13 +68,17 @@ Enter the connection info & passwords in the
 Bosch-IoT-Showcase/files/config/config.json
 ````
 file.
+
 ![config](doc/images/config.png?raw=true "config")
+
 Change the following:
 - "wlanSSID":"the-WIFI-SSID"
 - "wlanPSK":"the-password"
 - "brokerPassword":"the-solace-cloud-broker-password"
 
-Note: Contact ricardo.gomez-ulmke@solace.com or swen-helge.huber@solace.com to get the password for the broker.
+**_Note: Contact ricardo.gomez-ulmke@solace.com or swen-helge.huber@solace.com to get the password for the broker._**
+
+... wait for the response ...
 
 Now copy the ```` config.json ```` to the SD card and insert it into the XDK.
 
@@ -89,16 +96,17 @@ Now copy the ```` config.json ```` to the SD card and insert it into the XDK.
 - Click anywhere in your project in the Project Explorer (so Eclipse knows which project to flash)
 - Click Flash in the XDK Devices panel.
 - Check the console output
-   - if it says "Invalid application", try the next steps to fix
+   - if it says "Invalid application", try the next steps to fix it
    - if it says "Jumping to application", then your device has successfully booted the application
 
 ### Dealing with "Invalid Application"
-This seems to happen from time to time.
+This seems to happen from time to time. Don't give up until it worked.
+
 
 ![flashing_invalid_app](doc/images/flashing_invalid_app.png?raw=true "flashing_invalid_app")
 
 Try the following:
-- add the XDK Nature to the project
+- Add the XDK Nature to the project
 - Clean project
 - Build project
 - Flash again...
@@ -113,14 +121,14 @@ INFO | XDK DEVICE 1:  Jumping to application
 ````
 Another small irritation of the XDK Workbench:
 - refresh the XDK Devices panel ==> changes to Mode: Application
-- now click the green link denoted COM ==> serial port is disconnected
+- now click the green link denoted COM in the XDK Devices panel ==> serial port is disconnected
 - now click it again ==> serial port is connected again
 
 Now you should see the XDK messages appearing on the console. Similar to this:
 
 ![console_log_1](doc/images/console_log_1.png?raw=true "console_log_1")
 
-### Find & Register your device Id
+### Find & Register your Device Id
 
 At boot time, the app prints out the device id. Look for this:
 
@@ -132,7 +140,7 @@ INFO | XDK DEVICE 1: AppControllerEnable: --------------------------------------
 Make a note of the device Id, choose a nickname and send us the Id + nickname to register them with the 'system'.
 
 
-### Subscribe to the metrics event
+### Subscribe to the Metrics Event Stream
 
 - Launch your MQTT test client.
 - Connect to the same Solace Cloud broker
@@ -193,13 +201,13 @@ You should receive a message similar to this:
 ]
 ````
 
-## View the sensor data
+## View the Sensor Data
 
 coming soon ...
 
 (on SL dashboard)
 
-## View the Solace event mesh
+## View the Solace Event Mesh
 
 coming soon ...
 
@@ -211,7 +219,7 @@ coming soon ...
 
 (on Boomi Flow application)
 
-## Analyze the sensor data
+## Analyze the Sensor Data
 
 coming soon ...
 
