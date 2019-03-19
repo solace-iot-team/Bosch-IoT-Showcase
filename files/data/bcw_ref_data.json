@@ -1,0 +1,104 @@
+{
+  "regions": [
+    {
+      "name": "BCW",
+      "id": "BCW",
+      "locations": [
+        {
+          "name": "Solace Booth",
+          "id": "solacebooth",
+          "productionLines": [
+            {
+              "name": "Race Track",
+              "id": "racetrack",
+              "devices": [
+                {
+                  "name": "Red Car",
+                  "id": "241d620158cd0069"
+                },
+                {
+                  "name": "Blue Car",
+                  "id": "24d4830458e86aec"
+                }
+              ]
+            },
+            {
+              "name": "Hand Held",
+              "id": "handheld",
+              "devices": [
+                {
+                  "name": "Ricardo-1",
+                  "id": "tbc"
+                },
+                {
+                  "name": "Swen-1",
+                  "id": "24d11f0358cd5d9a"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EU",
+      "id": "EU",
+      "locations": [
+        {
+          "name": "Stuttgart Feuerbach",
+          "id": "s-feuerbach",
+          "productionLines": [
+            {
+              "name": "Widget Line",
+              "id": "widgetline",
+              "devices": [
+                {
+                  "name": "Widget Maker",
+                  "id": "241d620158cd0095"
+                },
+                {
+                  "name": "Widget Polisher",
+                  "id": "241d620158cd0096"
+                }
+              ]
+            },
+            {
+              "name": "Thnagmajiggy Line",
+              "id": "handheld",
+              "devices": [
+                {
+                  "name": "Splicer",
+                  "id": "241d620158cd0011"
+                },
+                {
+                  "name": "Dicer",
+                  "id": "241d620158cd0012"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Boeblingen Werk 1",
+          "id": "bob-w1",
+          "productionLines": [
+            {
+              "name": "Race Track",
+              "id": "racetrack",
+              "devices": [
+                {
+                  "name": "Orange Car",
+                  "id": "241d620158cd0022"
+                },
+                {
+                  "name": "Green Car",
+                  "id": "241d620158cd0023"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
