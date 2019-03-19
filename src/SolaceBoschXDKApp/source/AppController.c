@@ -538,6 +538,9 @@ static void publishTelemetryMessage(void * param1, uint32_t param2)
 		MqttPublishInfo.Payload = s;
 		MqttPublishInfo.PayloadLength = length;
 		MqttPublishInfo.QoS = 0UL;
+
+		//printf("publishTelemetryMessage: publishing metrics on topic: %s\r\n", MqttPublishInfo.Topic);
+
 		Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishInfo,
 		MQTT_PUBLISH_TIMEOUT_IN_MS);
 		//printf("mqtt publish successful %i\n", retcode == RETCODE_OK);
@@ -903,6 +906,13 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 		Retcode_RaiseError(retcode);
 		assert(0); /* To provide LED indication for the user */
 	}
+
+// now print out the deviceId
+
+	printf("\r\nAppControllerEnable: ---------------------------------------- \r\n");
+	printf("AppControllerEnable: XDK Device Id: %s\r\n", deviceId);
+	printf("AppControllerEnable: ---------------------------------------- \r\n\r\n");
+
 	Utils_PrintResetCause();
 }
 
