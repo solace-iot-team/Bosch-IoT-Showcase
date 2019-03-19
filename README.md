@@ -54,15 +54,165 @@ Open the XDK Workbench and open the project:
 Click 'Directory ...' and select the directory with the XDK Workbench Eclipse Project
 ![import_project](doc/images/import_project.png?raw=true "import_project")
 
-!!! missing .cproject and .project 
+Build the project:
+![build_project](doc/images/build_project.png?raw=true "build_project")
+This creates the binary SolaceBoschXDKApp.bin. Note that it is compiled in debug mode, see the Makefile to change to release mode.
 
+### Copy the Config file
+
+Enter the connection info & passwords in the
+````
+Bosch-IoT-Showcase/files/config/config.json
+````
+file.
+![config](doc/images/config.png?raw=true "config")
+Change the following:
+- "wlanSSID":"the-WIFI-SSID"
+- "wlanPSK":"the-password"
+- "brokerPassword":"the-solace-cloud-broker-password"
+
+Note: Contact ricardo.gomez-ulmke@solace.com or swen-helge.huber@solace.com to get the password for the broker.
+
+Now copy the ```` config.json ```` to the SD card and insert it into the XDK.
+
+**_Note: be careful when inserting the SD card into the XDK. I just lost one and I don't think you can open it._**
+
+### Flash the App onto the XDK
+
+- Connect your XDK via the USB cable to your computer.
+- Switch your device on.
+- Refresh the device list.
+- Make sure the device is in Bootloader mode and you can see the Flash button.
+
+![xdk_devices_panel](doc/images/xdk_devices_panel.png?raw=true "xdk_devices_panel")
+
+- Click anywhere in your project in the Project Explorer (so Eclipse knows which project to flash)
+- Click Flash in the XDK Devices panel.
+- Check the console output
+   - if it says "Invalid application", try the next steps to fix
+   - if it says "Jumping to application", then your device has successfully booted the application
+
+### Dealing with "Invalid Application"
+This seems to happen from time to time.
+
+![flashing_invalid_app](doc/images/flashing_invalid_app.png?raw=true "flashing_invalid_app")
+
+Try the following:
+- add the XDK Nature to the project
+- Clean project
+- Build project
+- Flash again...
+
+![add_xdk_nature](doc/images/add_xdk_nature.png?raw=true "add_xdk_nature")
+
+### Check that the XDK boots
+
+You want to look out for:
+````
+INFO | XDK DEVICE 1:  Jumping to application
+````
+Another small irritation of the XDK Workbench:
+- refresh the XDK Devices panel ==> changes to Mode: Application
+- now click the green link denoted COM ==> serial port is disconnected
+- now click it again ==> serial port is connected again
+
+Now you should see the XDK messages appearing on the console. Similar to this:
+
+![console_log_1](doc/images/console_log_1.png?raw=true "console_log_1")
+
+### Find & Register your device Id
+
+At boot time, the app prints out the device id. Look for this:
+
+````
+INFO | XDK DEVICE 1: AppControllerEnable: ----------------------------------------
+INFO | XDK DEVICE 1: AppControllerEnable: XDK Device Id: <your device id>
+INFO | XDK DEVICE 1: AppControllerEnable: ----------------------------------------
+````
+Make a note of the device Id, choose a nickname and send us the Id + nickname to register them with the 'system'.
+
+
+### Subscribe to the metrics event
+
+- Launch your MQTT test client.
+- Connect to the same Solace Cloud broker
+- Subscribe to the metrics stream from your device
+
+The topic template is as follows:
+````
+$create/iot-event/<baseTopic>/<deviceId>/metrics
+
+where baseTopic is defined in the config.json, for example:
+
+	"baseTopic": "BCW/solacebooth/racetrack"
+
+so, the resulting topic would look as follows:
+
+$create/iot-event/BCW/solacebooth/racetrack/<deviceId>/metrics
+
+````
+
+You should receive a message similar to this:
+
+````
+[
+  {
+    "timestamp": "2019-03-19T14:19:01.657Z",
+    "deviceId": "24d11f0358cd5d9a",
+    "humidity": 30,
+    "light": 123840,
+    "temperature": 26.061,
+    "acceleratorX": -10,
+    "acceleratorY": -10,
+    "acceleratorZ": 991,
+    "gyroX": 732,
+    "gyroY": -549,
+    "gyroZ": -5612,
+    "magR": 6058,
+    "magX": -56,
+    "magY": 10,
+    "magZ": -70
+  },
+  {
+    "timestamp": "2019-03-19T14:19:02.156Z",
+    "deviceId": "24d11f0358cd5d9a",
+    "humidity": 30,
+    "light": 123840,
+    "temperature": 26.051,
+    "acceleratorX": -10,
+    "acceleratorY": -15,
+    "acceleratorZ": 989,
+    "gyroX": 671,
+    "gyroY": -549,
+    "gyroZ": -5551,
+    "magR": 6058,
+    "magX": -55,
+    "magY": 8,
+    "magZ": -70
+  }
+]
+````
 
 ## View the sensor data
 
+coming soon ...
+
+(on SL dashboard)
+
 ## View the Solace event mesh
 
+coming soon ...
+
+(on SL dashboard)
+
 ## Interact with the XDK110
-- using the Boomi Flow application (http://boomi.to/solace)
-- details in the Wiki
+
+coming soon ...
+
+(on Boomi Flow application)
 
 ## Analyze the sensor data
+
+coming soon ...
+
+(on Datawatch Panopticon)

@@ -587,7 +587,7 @@
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="XDK Default">
-			<resource resourceType="PROJECT" workspacePath="/SimpleMQTTClient"/>
+			<resource resourceType="PROJECT" workspacePath="/SolaceBoschXDKApp"/>
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="scannerConfiguration">

@@ -40,7 +40,7 @@
 		<link>
 			<name>SDK</name>
 			<type>2</type>
-			<location>/Applications/XDK_35.app/Contents/Eclipse/SDK</location>
+			<location>/Applications/XDK.app/Contents/Eclipse/SDK</location>
 		</link>
 	</linkedResources>
 </projectDescription>
