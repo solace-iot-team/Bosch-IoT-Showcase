@@ -63,15 +63,15 @@
               ]
             },
             {
-              "name": "Thnagmajiggy Line",
-              "id": "handheld",
+              "name": "ElektroMotor Line",
+              "id": "elektromotor-line",
               "devices": [
                 {
-                  "name": "Splicer",
+                  "name": "Batterien",
                   "id": "241d620158cd0011"
                 },
                 {
-                  "name": "Dicer",
+                  "name": "Motor",
                   "id": "241d620158cd0012"
                 }
               ]
@@ -83,15 +83,15 @@
           "id": "bob-w1",
           "productionLines": [
             {
-              "name": "Race Track",
-              "id": "racetrack",
+              "name": "Bohrmaschine",
+              "id": "bohr-1",
               "devices": [
                 {
-                  "name": "Orange Car",
+                  "name": "Getriebe",
                   "id": "241d620158cd0022"
                 },
                 {
-                  "name": "Green Car",
+                  "name": "Motor",
                   "id": "241d620158cd0023"
                 }
               ]
