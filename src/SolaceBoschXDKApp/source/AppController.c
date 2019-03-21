@@ -428,6 +428,11 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		printf("not a configuration message\n");
 	} else {
 
+		cJSON *sensors = cJSON_GetObjectItem(inComingMsg, "sensors");
+		if (sensors == NULL || cJSON_GetArraySize(sensors) <1){
+			cJSON_Delete(inComingMsg);
+			return;
+		}
 		xQueueSend(responseQueue, "CONFIGURATION", MILLISECONDS(100));
 		// wait until changes shall be implemented
 		cJSON * delay = cJSON_GetObjectItem(inComingMsg, "delay");
@@ -455,7 +460,6 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		isHumidity = 0;
 		isTemperature = 0;
 		isPressure = 0;
-		cJSON *sensors = cJSON_GetObjectItem(inComingMsg, "sensors");
 		int sensorCount = cJSON_GetArraySize(sensors);
 		for (int i = 0; i < sensorCount; i++) {
 			cJSON* sensor = cJSON_GetArrayItem(sensors, i);
@@ -505,7 +509,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			printf("REBOOT requested, restarting in %i seconds\n",
 					delay->valueint);
 			vTaskDelay(SECONDS(delay->valueint));
-			//BSP_Board_SoftReset();
+			BSP_Board_SoftReset();
 		}
 	}
 	cJSON_Delete(inComingMsg);
