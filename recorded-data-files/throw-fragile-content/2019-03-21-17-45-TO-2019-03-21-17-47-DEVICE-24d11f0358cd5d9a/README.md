@@ -1,17 +1,10 @@
 # Record Data
 
-## Scenario: throw fragile content package
-fragile, sensitive to shock content is thrown
-
-## Goal
-detect throwing and alert
-
 ## Details
-
+* Device Id: 24d11f0358cd5d9a
+* Date: 21 March 2019
 * Start around 17:45
 * End around 17:47
-* Device Id: 24d11f0358cd5d9a
-
 
 * 10 repeated throws
 * about 2 meters
