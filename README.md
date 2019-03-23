@@ -27,7 +27,8 @@ Here is what you need before you can get started:
 
 ## Get started
 
-[Go here](./tree/master/src) for details on how to install the **_Solace Bosch XDK110 App_** on the Bosch XDK110.
+[Go to the src directory](https://github.com/solace-iot-team/Bosch-IoT-Showcase/tree/master/src) for details on how to install the **_Solace Bosch XDK110 App_** on the Bosch XDK110.
+
 
 ## What's next
 

@@ -1,6 +1,6 @@
 # The Solace Bosch-XDK110 Application
 
-[Go here](../.) to see what you need before installing the **_Solace Bosch XDK110 App_**.
+[Go here](https://github.com/solace-iot-team/Bosch-IoT-Showcase) to see what you need before installing the **_Solace Bosch XDK110 App_**.
 
 ## Install the Solace MQTT XDK App on the XDK110
 
@@ -63,7 +63,7 @@ Change the following:
 
 Now copy the ```` config.json ```` to the SD card and insert it into the XDK.
 
-**_Note: be careful when inserting the SD card into the XDK. I just lost one and I don't think you can open it._**
+**_Note: be careful when inserting the SD card into the XDK! When inserted incorrectly, the card may fall into the device._**
 
 ### Flash the App onto the XDK
 
@@ -123,8 +123,38 @@ Make a note of the device Id, choose a nickname and send us the Id + nickname to
 ### Subscribe to the Metrics Event Stream
 
 - Launch your MQTT test client.
-- Connect to the same Solace Cloud broker
+- Connect to the same Solace Cloud broker as provided in the config.json file.
 - Subscribe to the metrics stream from your device
+
+#### Create the MQTT Client
+
+Click **Create MQTT Client**:
+<p align="left"><img src="../doc/images/mqtt-box-create-client.png" width=500 /></p>
+
+Enter the values as shown below:
+* **MQTT Client Name**: 'descriptive name of your choice', for example:
+  - ````The Bosch-XDK110-Demo Edge Broker Client````
+* **Protocol**:
+  - ````mqtt / tcp````
+* **Username**:
+  - ````the username from the config.json, e.g. "brokerUsername":"solace-cloud-client"````
+* **MQTT Client Id**:
+  - ````from config.json, e.g. "mqttClientId":"default"`````
+* **Host**:
+  - format: &lt;host>:&lt;port>
+  - ````from config.json: "brokerURL":"the host" & "brokerPort": the-port-number````
+* **Password**:
+  - the password for the broker
+
+Click **Save**.
+
+<p align="left"><img src="../doc/images/mqtt-client-settings.png" /></p>
+
+You should see the following screen:
+
+<p align="left"><img src="../doc/images/mqtt-box-connected.png" /></p>
+
+#### Subscribe to the Metrics
 
 The topic template is as follows:
 ````
@@ -140,13 +170,17 @@ $create/iot-event/BCW/solacebooth/racetrack/<deviceId>/metrics
 
 ````
 
-You should receive a message similar to this:
+Enter the topic and click **Subscribe**.
+
+<p align="left"><img src="../doc/images/mqtt-box-subscribe-to-metrics.png" /></p>
+
+The message should look similar to this:
 
 ````
 [
   {
     "timestamp": "2019-03-19T14:19:01.657Z",
-    "deviceId": "24d11f0358cd5d9a",
+    "deviceId": "<deviceId>",
     "humidity": 30,
     "light": 123840,
     "temperature": 26.061,
@@ -163,7 +197,7 @@ You should receive a message similar to this:
   },
   {
     "timestamp": "2019-03-19T14:19:02.156Z",
-    "deviceId": "24d11f0358cd5d9a",
+    "deviceId": "<deviceId>",
     "humidity": 30,
     "light": 123840,
     "temperature": 26.051,
