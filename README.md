@@ -27,7 +27,7 @@ Here is what you need before you can get started:
 
 ## Get started
 
-[Go here](./src) for details on how to install the **_Solace Bosch XDK110 App_** on the Bosch XDK110.
+[Go here](./tree/master/src) for details on how to install the **_Solace Bosch XDK110 App_** on the Bosch XDK110.
 
 ## What's next
 
