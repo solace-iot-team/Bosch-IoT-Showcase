@@ -1,22 +1,6 @@
 # The Solace Bosch-XDK110 Application
 
-## Overview
-- The XDK 110 is a programmable sensor. See details here: http://xdk.bosch-connectivity.com/. "I’m a programmable sensor device & a prototyping platform for any IoT use case you can imagine."
-- We have developed a client (the **_Solace Bosch XDK App_**) which connects via MQTT to the event mesh.
-
-## What you need before getting started
-Here is what you need before you can get started:
-- Bosch XDK 110 + Micro SD Card + SD Card Adapter
-> - Go to https://xdk.bosch-connectivity.com/buy-xdk to find a retailer.
-  >   - XDK110
-  >   - Micro SD card 32GB (not more)
-  >   - SD Card Adapter to write / edit the config file onto the SD card from your computer
-- XDK Workbench, version 3.5.x
-> - Once your XDK has arrived:
->   - register on https://xdk.bosch-connectivity.com/
->   - download and install the XDK Workbench (you need the serial number of your XDK110 device)
-- A MQTT test client
-> - For example, MQTT Box from http://workswithweb.com/mqttbox.html
+[Go here](../.) to see what you need before installing the **_Solace Bosch XDK110 App_**.
 
 ## Install the Solace MQTT XDK App on the XDK110
 
