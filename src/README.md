@@ -172,7 +172,7 @@ $create/iot-event/BCW/solacebooth/racetrack/<deviceId>/metrics
 
 Enter the topic and click **Subscribe**.
 
-<p align="left"><img src="../doc/images/mqtt-box-subscribe-to-metrics.png" /></p>
+<p align="left"><img src="../doc/images/mqtt-box-subscribe-to-metrics.png" width=500 /></p>
 
 The message should look similar to this:
 
