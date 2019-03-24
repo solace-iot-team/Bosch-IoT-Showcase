@@ -1,15 +1,6 @@
 # The Solace Bosch-XDK110 Application
 
-[What you need to get ...](#what-you-need-before-getting-started)
-
-[Recording XDK Data][recording-data]
-
-[home]: https://github.com/solace-iot-team/Bosch-IoT-Showcase/wiki
-
-[templating]: api-descriptions#topic-namespace-and-templating
-
 [Go here](https://github.com/solace-iot-team/Bosch-IoT-Showcase#what-you-need-before-getting-started) to see what you need before installing the **_Solace Bosch XDK110 App_**.
-
 
 ## Install the Solace MQTT XDK App on the XDK110
 

@@ -26,33 +26,41 @@ Here is what you need before you can get started:
 - A MQTT test client
 > - For example, MQTT Box from http://workswithweb.com/mqttbox.html
 
-## Get started
+## Installing the Solace Bosch XDK110 Application
 
 [Go to the src directory](https://github.com/solace-iot-team/Bosch-IoT-Showcase/tree/master/src) for details on how to install the **_Solace Bosch XDK110 App_** on the Bosch XDK110.
-
 
 ## What's next
 
 ### View the Sensor Data
 
-coming soon ...
+Using the **_SL RTView Event Dashboard_**, you can visualize the real-time sensor data the XDK sends periodically.
 
-(on SL dashboard)
+_Note: if your device Id has not been registered yet, select **All Devices** and search for the device Id._
 
-### View the Solace Event Mesh
+Device IoT Data Visualization: http://bit.ly/2YdArPv
+(the URL is subject to change. let us know if it does not work any more ...)
 
-coming soon ...
+### View the Hybrid IoT Event Mesh
 
-(on SL dashboard)
+Using the **_SL RTView Monitorig Dashboard_**, you can visualize the Solace Event Mesh.
+
+Hybrid IoT Event Mesh Visualization: http://bit.ly/2TeSC3q
+(the URL is subject to change. let us know if it does not work any more ...)
 
 ### Interact with the XDK110
 
-coming soon ...
+Using the **_Boomi Flow Command & Control Application_**, you can interact with the XDK device.
 
-(on Boomi Flow application)
+http://boomi.to/solace
+
 
 ### Analyze the Sensor Data
 
 coming soon ...
 
 (on Datawatch Panopticon)
+
+
+----------
+The End.
