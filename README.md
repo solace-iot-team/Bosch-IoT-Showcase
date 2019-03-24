@@ -13,8 +13,6 @@ For more details visit the [Wiki page](https://github.com/solace-iot-team/Bosch-
 
 ## What you need before getting started
 
-[## my anchor square brackets](#my-anchor-round-brackets)
-
 Here is what you need before you can get started:
 - Bosch XDK 110 + Micro SD Card + SD Card Adapter
 > - Go to https://xdk.bosch-connectivity.com/buy-xdk to find a retailer.
