@@ -1,4 +1,4 @@
-# Record Data
+# Monitoring Washing Machine Cycles
 
 ## Scenario:
 
