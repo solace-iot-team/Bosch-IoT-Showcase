@@ -27,6 +27,6 @@ Detect shock above tolerated levels which indicates that goods may be damaged.
 
 ## Benefits
 
-* **insurance disputes cost reduction**
+* **cost reduction for insurance disputes**
 * **reduction of additional quality control/inspection costs**
-* **early replacement of damaged goods (0.9 probability) reduces impact**
+* **early replacement of damaged goods (0.9 probability) reduces impact on production/business**
