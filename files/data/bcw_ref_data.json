@@ -45,6 +45,46 @@
       ]
     },
     {
+      "name": "IoT World",
+      "id": "IoTWorld",
+      "locations": [
+        {
+          "name": "SL Booth",
+          "id": "sl-booth",
+          "productionLines": [
+            {
+              "name": "Race Track",
+              "id": "racetrack",
+              "devices": [
+                {
+                  "name": "Red Car",
+                  "id": "xdk-id-4-sl-red-car"
+                },
+                {
+                  "name": "Blue Car",
+                  "id": "xdk-id-4-sl-blue-car"
+                }
+              ]
+            },
+            {
+              "name": "Hand Held",
+              "id": "handheld",
+              "devices": [
+                {
+                  "name": "Mike-1",
+                  "id": "xdk-id-4-mike-1"
+                },
+                {
+                  "name": "Jeremy-1",
+                  "id": "xdk-id-4-jeremy-1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "EU",
       "id": "EU",
       "locations": [
