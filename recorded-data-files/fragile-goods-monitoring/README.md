@@ -4,7 +4,7 @@
 
 Monitoring the Transport of fragile goods.
 
-* device is mounted on pallete or container
+* device is mounted on pallet, container, box
 * device connects to 'on-truck/train/van/ship' gateway
 * gateway acts as a data logger and connects via cellular or satellite network to a Solace Regional Edge Broker
 
