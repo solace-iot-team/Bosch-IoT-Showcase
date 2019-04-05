@@ -23,8 +23,11 @@ Detect throwing and generate alert message
 
 See Wiki: https://github.com/solace-iot-team/Bosch-IoT-Showcase/wiki/Message-Simulator
 
+### Sample Topic
 
-## Sample Message
+$create/iot-event/simulation/solace_logistics/pallet/{deviceId}/metrics
+
+### Sample Message
 
 ````
 [
