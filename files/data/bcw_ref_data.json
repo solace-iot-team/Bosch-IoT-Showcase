@@ -10,7 +10,7 @@
           "productionLines": [
             {
               "name": "Race Track",
-              "id": "racetrack",
+              "id": "racetrack-solace",
               "devices": [
                 {
                   "name": "Red Car",
@@ -24,7 +24,7 @@
             },
             {
               "name": "Hand Held",
-              "id": "handheld",
+              "id": "handheld-solace",
               "devices": [
                 {
                   "name": "Ricardo-1",
@@ -37,6 +37,10 @@
                 {
                   "name": "Jon-1",
                   "id": "24cc110458cd416e"
+                },
+                {
+                  "name": "Dirk-1",
+                  "id": "24d4830458e8b15f"
                 }
               ]
             }
@@ -54,7 +58,7 @@
           "productionLines": [
             {
               "name": "Race Track",
-              "id": "racetrack",
+              "id": "racetrack-sl",
               "devices": [
                 {
                   "name": "Red Car",
@@ -68,7 +72,7 @@
             },
             {
               "name": "Hand Held",
-              "id": "handheld2",
+              "id": "handheld-sl",
               "devices": [
                 {
                   "name": "Mike-1",
