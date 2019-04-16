@@ -573,6 +573,17 @@
 							<tool id="com.bosch.cds.xdk.toolchain.tool1.1333544892" name="BCDS Create Flash Image" superClass="com.bosch.cds.xdk.toolchain.tool1"/>
 						</toolChain>
 					</folderInfo>
+					<folderInfo id="cdt.managedbuild.toolchain.gnu.mingw.base.2085283633.576006805" name="/" resourcePath="SDK">
+						<toolChain id="com.bosch.cds.xdk.toolchain.2008056097" name="BCDS XDK Toolchain" superClass="com.bosch.cds.xdk.toolchain" unusedChildren="">
+							<tool id="com.bosch.cds.xdk.toolchain.c.821045833" name="BCDS C Compiler" superClass="com.bosch.cds.xdk.toolchain.c.16501066"/>
+							<tool id="com.bosch.cds.xdk.toolchain.c.ld.809736563" name="BCDS C Linker" superClass="com.bosch.cds.xdk.toolchain.c.ld.13725613"/>
+							<tool id="com.bosch.cds.xdk.toolchain.as.182858640" name="BCDS Assembler" superClass="com.bosch.cds.xdk.toolchain.as.626709848"/>
+							<tool id="com.bosch.cds.xdk.toolchain.cxx.440942109" name="BCDS C++ Compiler" superClass="com.bosch.cds.xdk.toolchain.cxx.1184917446"/>
+							<tool id="com.bosch.cds.xdk.toolchain.cxx.ld.397693583" name="BCDS C++ Linker" superClass="com.bosch.cds.xdk.toolchain.cxx.ld.2083593162"/>
+							<tool id="com.bosch.cds.xdk.toolchain.ar.1288849707" name="BCDS Archiver" superClass="com.bosch.cds.xdk.toolchain.ar.861713335"/>
+							<tool id="com.bosch.cds.xdk.toolchain.tool1.36997823" name="BCDS Create Flash Image" superClass="com.bosch.cds.xdk.toolchain.tool1.1333544892"/>
+						</toolChain>
+					</folderInfo>
 					<sourceEntries>
 						<entry excluding="SDK/xdk110/Apps" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
@@ -597,4 +608,5 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>
