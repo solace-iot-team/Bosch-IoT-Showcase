@@ -6,7 +6,7 @@
 	"brokerUsername":"solace-cloud-client",
 	"brokerPassword":"change_me",
 	"mqttClientId":"default",
-	"wlanSSID":"BTHub5-3X26",
+	"wlanSSID":"change_me",
 	"wlanPSK":"change_me",
-	"baseTopic": "BCW/solacebooth/racetrack"
+	"resourceCategorization": "change_me, see: https://github.com/solace-iot-team/Bosch-IoT-Showcase/wiki/topic-templating"
 }
