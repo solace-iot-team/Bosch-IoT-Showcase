@@ -12,6 +12,9 @@ export BCDS_APP_DIR = $(CURDIR)
 export BCDS_APP_SOURCE_DIR = $(BCDS_APP_DIR)/source
 export BCDS_FREERTOS_INCLUDE_AWS=1
 
+export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP 
+
+
 # Macro for server cetificate which is used for secure communication.
 # User can provide custom server certificate as well.
 # By default the test.mosquito.org MQTT open source broker certificate is configured.
