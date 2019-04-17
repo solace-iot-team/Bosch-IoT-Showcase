@@ -70,7 +70,7 @@
 #define MQTT_SUBSCRIBE_TIMEOUT_IN_MS                UINT32_C(20000)/**< Macro for MQTT subscription timeout in milli-second */
 #define MQTT_PUBLISH_TIMEOUT_IN_MS                  UINT32_C(500)/**< Macro for MQTT publication timeout in milli-second */
 #define APP_MQTT_DATA_BUFFER_SIZE                   UINT32_C(1024)/**< macro for data size of incoming subscribed and published messages */
-#define APP_MQTT_BASE_TOPIC						"EU/XDK"
+#define APP_MQTT_RESOURCE_CATEGORIZATION			"EU/XDK"
 
 // config file buffer and location
 #define WIFI_CFG_FILE_READ_BUFFER                   UINT32_C(2048)/**< Macro for wifi config file read buffer*/
@@ -240,7 +240,7 @@ SemaphoreHandle_t jsonPayloadHandle;
 // configuration file handling
 static uint8_t FileReadBuffer[WIFI_CFG_FILE_READ_BUFFER] = { 0 }; /**< Buffer to store the configuration file from the SD card / WiFi storage */
 static cJSON * config = NULL;
-char* baseTopic = APP_MQTT_BASE_TOPIC;
+char* resourceCategorization = APP_MQTT_RESOURCE_CATEGORIZATION;
 
 // configuration variables - govern behaviour of the appliaction - activated sensors, publishing and sampling frequency etc
 uint32_t samplesPerEvent = APP_MQTT_DATA_PUBLISH_PERIODICITY/APP_MQTT_DATA_SAMPLING_PERIODICITY;
@@ -317,7 +317,7 @@ void setMQTTConfig(void){
  * Read topic config from config file and update the configuration variables
  */
 void setTopicConfig(void){
-	baseTopic = cJSON_GetObjectItem(config,"baseTopic")->valuestring;
+	resourceCategorization = cJSON_GetObjectItem(config,"resourceCategorization")->valuestring;
 }
 
 
@@ -325,6 +325,10 @@ void setTopicConfig(void){
  * Read the config file and parse to JSON
  */
 void readConfigFromFile(void){
+
+	vTaskDelay(5000); // otherwise we won't see the INFO
+	printf("[INFO] - readConfigFromFile, starting ...\r\n");
+
 	Retcode_T retcode = RETCODE_OK;
 	Storage_Read_T readCredentials =
             {
@@ -336,10 +340,18 @@ void readConfigFromFile(void){
             };
     retcode = Storage_Read(STORAGE_MEDIUM_SD_CARD, &readCredentials);
     if (retcode!= RETCODE_OK){
-    	printf("Can not read configuration file, aborting file based configuration");
+    	printf("Can not read configuration file, aborting file based configuration\r\n");
+		vTaskDelay(10000);
+		assert(0);
     	return;
     }
     config = cJSON_ParseWithOpts((const char *) FileReadBuffer, 0, 1);
+
+	printf("[INFO] - readConfigFromFile: the config.json:\r\n");
+	char * jsonStr = cJSON_Print(config);
+	printf("%s\r\n", jsonStr);
+	free(jsonStr);
+
     setWLANConfig();
     setSNTPConfig();
     setMQTTConfig();
@@ -360,21 +372,77 @@ Retcode_T suspendTasks(void);
  */
 Retcode_T resumeTasks(void);
 
+/*
+struct StatusReflectionElements_S {
+	char requestType[64];
+	char exchangeId[128];
+	cJSON * tagsJsonHandle;
+};
+typedef struct StatusReflectionElements_S StatusReflectionElements_T;
+static StatusReflectionElements_T statusReflectionElements = {
+	.requestType = "none",
+	.exchangeId = "none",
+	.tagsJsonHandle = NULL
+};
+*/
+
+#define RESPONSE_QUEUE_DATA_BUFFER_LENGTH	sizeof(char*)
+#define RESPONSE_QUEUE_DEPTH				3
+#ifndef NDEBUG_XDK_APP
+static unsigned int sendResponseCounter = 0;
+#endif
 /**
  * Construct and emit a response status message
  */
 void sendResponse(void * param1) {
 	BCDS_UNUSED(param1);
-	char requestType[64];
+	//char requestType[64];
+	char * responseInputJsonDataBuffer = NULL;
+
 	while (1) {
-		int result = xQueueReceive(responseQueue, requestType,
-				MILLISECONDS(10));
+		//int result = xQueueReceive(responseQueue, requestType, MILLISECONDS(10));
+		int result = xQueueReceive(responseQueue, &responseInputJsonDataBuffer, MILLISECONDS(10));
+#ifndef NDEBUG_XDK_APP
+		if(result) {
+			if(result) sendResponseCounter++;
+			printf("[DEBUG] - sendResponse: sendResponseCounter: %i\r\n", sendResponseCounter);
+			printf("[DEBUG] - sendResponse: the message buffer:\r\n%s\r\n", responseInputJsonDataBuffer);
+		} else {
+			printf("[DEBUG] - sendResponse: no message on the queue...\r\n");
+		}
+#endif
 		if (result) {
+			cJSON *responseInputJsonMsg = cJSON_Parse(responseInputJsonDataBuffer);
+			free(responseInputJsonDataBuffer);
+			if (!responseInputJsonMsg) {
+				printf("[ERROR] - sendResponse: parsing JSON buffer, before: [%s]\r\n", cJSON_GetErrorPtr());
+				assert(0);
+			}
+#ifndef NDEBUG_XDK_APP
+			char * jsonStr = cJSON_Print(responseInputJsonMsg);
+			printf("[DEBUG] - sendResponse: the parsed JSON message:\r\n%s\r\n", jsonStr);
+			free(jsonStr);
+#endif
+
 			responseMessage = cJSON_CreateObject();
-			cJSON_AddItemToObject(responseMessage, "status",
-					cJSON_CreateString("SUCCESS"));
-			cJSON_AddItemToObject(responseMessage, "deviceId",
-					cJSON_CreateString(deviceId));
+			// copy from input
+			cJSON * statusJsonHandle = cJSON_GetObjectItem(responseInputJsonMsg, "status");
+			cJSON_AddItemToObject(responseMessage, "status", cJSON_CreateString(statusJsonHandle->valuestring));
+			cJSON * requestTypeJsonHandle = cJSON_GetObjectItem(responseInputJsonMsg, "requestType");
+			cJSON_AddItemToObject(responseMessage, "requestType", cJSON_CreateString(requestTypeJsonHandle->valuestring));
+			cJSON * exchangeIdJsonHandle = cJSON_GetObjectItem(responseInputJsonMsg, "exchangeId");
+			cJSON_AddItemToObject(responseMessage, "exchangeId", cJSON_CreateString(exchangeIdJsonHandle->valuestring));
+
+			//optional
+			cJSON * tagsJsonHandle = cJSON_GetObjectItem(responseInputJsonMsg, "tags");
+			if(tagsJsonHandle != NULL) {
+				//cJSON_AddItemToObject(responseMessage, "tags", tagsJsonHandle);
+				cJSON_AddItemToObject(responseMessage, "tags", cJSON_Duplicate(tagsJsonHandle,true));
+			}
+			cJSON_Delete(responseInputJsonMsg);
+
+			cJSON_AddItemToObject(responseMessage, "deviceId", cJSON_CreateString(deviceId));
+
 			char* date = NULL;
 			// add ticks to sntp time - need to convert sntp time to milliseconds
 			TickType_t ticks = xTaskGetTickCount()-tickOffset;
@@ -395,17 +463,36 @@ void sendResponse(void * param1) {
 					gmTime->tm_hour, gmTime->tm_min, gmTime->tm_sec, millis);
 			cJSON_AddItemToObject(responseMessage, "timestamp",
 					cJSON_CreateString(date));
-			cJSON_AddItemToObject(responseMessage, "requestType",
-					cJSON_CreateString(requestType));
+
+#ifndef NDEBUG_XDK_APP
+			jsonStr = cJSON_Print(responseMessage);
+			printf("[DEBUG] - sendResponse: responseMessage:\r\n%s\r\n", jsonStr);
+			free(jsonStr);
+#endif
+
 			char *s;
 			s = cJSON_PrintUnformatted(responseMessage);
+			int32_t s_length = strlen(s);
+
+#ifndef NDEBUG_XDK_APP
+			printf("[DEBUG] - sendResponse: s_length=%ld\r\n", s_length);
+			printf("[DEBUG] - sendResponse: s:\r\n%s\r\n", s);
+#endif
+
+			MqttPublishResponse.Payload = s;
+			MqttPublishResponse.PayloadLength = s_length;
+#warning should be qos1
+			//MqttPublishResponse.QoS = 1UL;
+
+#ifndef NDEBUG_XDK_APP
+			printf("[DEBUG] - sendResponse: MqttPublishResponse.Payload:\r\n%s\r\n", MqttPublishResponse.Payload);
+#endif
+
+			//printf("[TODO] - sendResponse: now do the publishing ...\r\n");
+			(void)MQTT_PublishToTopic(&MqttPublishResponse, MQTT_PUBLISH_TIMEOUT_IN_MS);
+
 			cJSON_Delete(responseMessage);
 			free(date);
-			int32_t length = strlen(s);
-			MqttPublishResponse.Payload = s;
-			MqttPublishResponse.PayloadLength = length;
-			Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishResponse,
-			MQTT_PUBLISH_TIMEOUT_IN_MS);
 		}
 		vTaskDelay(MILLISECONDS(500));
 	}
@@ -417,24 +504,65 @@ void sendResponse(void * param1) {
  */
 static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 
-	//printf("Received configuration\n");
+	//printf("[INFO] - subscriptionCallBack: received command / configuration message. payload: \r\n%s\r\n", param.Payload);
+
 	cJSON *inComingMsg = cJSON_Parse(param.Payload);
 	if (!inComingMsg) {
-		printf("Error before: [%s]\n", cJSON_GetErrorPtr());
+#warning should send a status FAILED with reason back
+		printf("Error before: [%s]\r\n", cJSON_GetErrorPtr());
 		cJSON_Delete(inComingMsg);
 		return;
 	}
+
+	cJSON * statusResponseInputJson = cJSON_CreateObject();
+	//extract the exchangeId - mandatory for all commands & configuration messages
+	cJSON * exchangeIdJsonHandle = cJSON_GetObjectItem(inComingMsg, "exchangeId");
+	if(exchangeIdJsonHandle == NULL) {
+		printf("'exchangeId' - element not found, mandatory. aborting ...\r\n");
+#warning send FAILED status
+		cJSON_Delete(inComingMsg);
+		return;
+	}
+	cJSON_AddItemToObject(statusResponseInputJson, "exchangeId", cJSON_CreateString(exchangeIdJsonHandle->valuestring));
+
+#ifndef NDEBUG_XDK_APP
+		char * jsonStr = cJSON_Print(statusResponseInputJson);
+		printf("[DEBUG] - subscriptionCallBack: 1-statusResponseInputJson:\r\n%s\r\n", jsonStr);
+		free(jsonStr);
+#endif
+
+		////////////////// CONFIGURATION
 	if (strstr(param.Topic, "configuration") == NULL) {
 		printf("not a configuration message\n");
 	} else {
-
-		cJSON *sensors = cJSON_GetObjectItem(inComingMsg, "sensors");
-		if (sensors == NULL || cJSON_GetArraySize(sensors) <1){
+		// 'tags' element
+		cJSON * tagsJsonHandle = cJSON_GetObjectItem(inComingMsg, "tags");
+		if(tagsJsonHandle == NULL) {
+			printf("'tags' - element not found, mandatory for configuration messages. aborting ...\r\n");
+	#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
-		xQueueSend(responseQueue, "CONFIGURATION", MILLISECONDS(100));
-		Retcode_T retcode = RETCODE_OK;
+		//cJSON_AddItemToObject(statusResponseInputJson, "tags", tagsJsonHandle);
+		cJSON_AddItemToObject(statusResponseInputJson, "tags", cJSON_Duplicate(tagsJsonHandle,true));
+		//add requestType
+		cJSON_AddItemToObject(statusResponseInputJson, "requestType", cJSON_CreateString("CONFIGURATION"));
+
+#ifndef NDEBUG_XDK_APP
+		jsonStr = cJSON_Print(statusResponseInputJson);
+		printf("[DEBUG] - subscriptionCallBack: 2 - statusResponseInputJson:\r\n%s\r\n", jsonStr);
+		free(jsonStr);
+#endif
+
+		//read the sensors
+		cJSON *sensors = cJSON_GetObjectItem(inComingMsg, "sensors");
+		if (sensors == NULL || cJSON_GetArraySize(sensors) <1) {
+			printf("'sensors' - element not found, mandatory for configuration messages. aborting ...\r\n");
+	#warning send FAILED status
+			cJSON_Delete(inComingMsg);
+			return;
+		}
+
 		// set the sampling and messaging frequency
 		cJSON * numberOfEventsPerSecond = cJSON_GetObjectItem(inComingMsg,
 				"telemetryEventFrequency");
@@ -442,6 +570,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 				"samplesPerEvent");
 		if (numberOfEventsPerSecond == NULL || numberOfSamplesPerEvent == NULL){
 			printf("telemetryEventFrequency or samplesPerEvent not supplied");
+#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
@@ -474,7 +603,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		for (int i = 0; i < sensorCount; i++) {
 			cJSON* sensor = cJSON_GetArrayItem(sensors, i);
 			const char *actSensor = sensor->valuestring;
-			printf("Activating sensor %s\n", actSensor);
+			printf("[INFO] - subscriptionCallBack: Activating sensor %s\r\n", actSensor);
 
 			if (strcmp(actSensor, "humidity") == 0) {
 				isHumidity = 1;
@@ -496,29 +625,77 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			}
 			actSensor = NULL;
 		}
+
+		cJSON_AddItemToObject(statusResponseInputJson, "status", cJSON_CreateString("SUCCESS"));
+
+		char * statusResponseInputJsonText = cJSON_PrintUnformatted(statusResponseInputJson);
+		int size = snprintf(NULL, 0, "%s", statusResponseInputJsonText);
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - subscriptionCallBack: size of responseInputJsonDataBuffer = %i\r\n", size);
+#endif
+		char * responseInputJsonDataBuffer = malloc(size+1);
+		if(responseInputJsonDataBuffer == NULL) {
+			// out of resources
+			printf("[ERROR] - subscriptionCallBack: can't allocate memory for responseInputJsonDataBuffer.\r\n");
+			assert(0);
+		}
+		snprintf(responseInputJsonDataBuffer, size+1, "%s", statusResponseInputJsonText);
+		free(statusResponseInputJsonText);
+		cJSON_Delete(statusResponseInputJson);
+
+		// now enqueue the response message
+		BaseType_t result = pdFAIL;
+		result = xQueueSend(responseQueue, &responseInputJsonDataBuffer, MILLISECONDS(100));
+		if(pdFAIL == result) {
+			printf("[ERROR] - subscriptionCallBack:xQueueSend(): failed to queue status response.\r\n");
+			// ignore for now
+			//assert(0);
+		}
 		resumeTasks();
 	}
+	////////////////// COMMAND
 	if (strstr(param.Topic, "command") == NULL) {
 		printf("not a command message\n");
 	} else {
-		printf("received command %s\n", param.Payload);
-		cJSON *inComingMsg = cJSON_Parse(param.Payload);
-		if (!inComingMsg) {
-			printf("Error before: [%s]\n", cJSON_GetErrorPtr());
+		cJSON * command = cJSON_GetObjectItem(inComingMsg, "command");
+		if (command == NULL) {
+			printf("'command' - element not found, mandatory for command messages. aborting ...\r\n");
+	#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
-		cJSON * command = cJSON_GetObjectItem(inComingMsg, "command");
-		if (command == NULL) {
-			return;
+
+		cJSON_AddItemToObject(statusResponseInputJson, "requestType", cJSON_CreateString("COMMAND"));
+
+		cJSON_AddItemToObject(statusResponseInputJson, "status", cJSON_CreateString("SUCCESS"));
+
+		char * statusResponseInputJsonText = cJSON_PrintUnformatted(statusResponseInputJson);
+		int size = snprintf(NULL, 0, "%s", statusResponseInputJsonText);
+		char * responseInputJsonDataBuffer = malloc(size+1);
+		if(responseInputJsonDataBuffer == NULL) {
+			// out of resources
+			printf("[ERROR] - subscriptionCallBack: can't allocate memory for responseInputJsonDataBuffer.\r\n");
+			assert(0);
 		}
-		xQueueSend(responseQueue, "COMMAND", MILLISECONDS(100));
+		snprintf(responseInputJsonDataBuffer, size+1, "%s", statusResponseInputJsonText);
+		free(statusResponseInputJsonText);
+		cJSON_Delete(statusResponseInputJson);
+
+		BaseType_t result = pdFAIL;
+		result = xQueueSend(responseQueue, &responseInputJsonDataBuffer, MILLISECONDS(100));
+		if(pdFAIL == result) {
+			printf("[ERROR] - subscriptionCallBack:xQueueSend(): failed to queue status response.\r\n");
+			//ignore for now
+			//assert(0);
+		}
+
 		char *rebootCommand = strstr(command->valuestring, "REBOOT");
 		if (rebootCommand != NULL) {
 			cJSON * delay = cJSON_GetObjectItem(inComingMsg, "delay");
 			printf("REBOOT requested, restarting in %i seconds\n",
 					delay->valueint);
 			vTaskDelay(SECONDS(delay->valueint));
+			//printf("[INFO] - reboot command - not actually doing it, testing ...\r\n");
 			BSP_Board_SoftReset();
 		}
 	}
@@ -547,16 +724,15 @@ static void publishTelemetryMessage(void * param1, uint32_t param2)
 		printf("publishing blocked\n");
 		return;
 	}
-	int32_t length = strlen(s);
-	if (length <= 975 && sampleCount >0) {
+	int32_t s_length = strlen(s);
+	if (s_length <= 975 && sampleCount >0) {
 		MqttPublishInfo.Payload = s;
-		MqttPublishInfo.PayloadLength = length;
+		MqttPublishInfo.PayloadLength = s_length;
 		MqttPublishInfo.QoS = 0UL;
 
 		//printf("publishTelemetryMessage: publishing metrics on topic: %s\r\n", MqttPublishInfo.Topic);
 
-		Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishInfo,
-		MQTT_PUBLISH_TIMEOUT_IN_MS);
+		Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishInfo, MQTT_PUBLISH_TIMEOUT_IN_MS);
 		//printf("mqtt publish successful %i\n", retcode == RETCODE_OK);
 		if (RETCODE_OK != retcode) {
 			vTaskSuspend(AppControllerHandle);
@@ -575,8 +751,7 @@ static void publishTelemetryMessage(void * param1, uint32_t param2)
 				vTaskDelay(MILLISECONDS(i*500));
 			}
 			if (!reconnected) {
-				printf(
-						"publishTelemetryMessage : MQTT re-connection to the broker failed \n\r");
+				printf("publishTelemetryMessage : MQTT re-connection to the broker failed \n\r");
 				BSP_Board_SoftReset();
 			}
 				printf(
@@ -589,8 +764,11 @@ static void publishTelemetryMessage(void * param1, uint32_t param2)
 			resumeTasks();
 		}
 		MqttPublishInfo.QoS = 1UL;
-	} else
-		printf("payload length %i\n", (int)length);
+	} else {
+		printf("[WARNING] - publishTelemetryMessage: not publishing, because:\r\n");
+		printf("\ttelemetry payload length = %ld\r\n", s_length);
+		printf("\tsampleCount = %i\r\n", sampleCount);
+	}
 	free(s);
 }
 
@@ -701,26 +879,35 @@ Retcode_T startTasks(Retcode_T retcode) {
 		if (pdPASS
 				!= xTaskCreate(SampleTask, (const char* const ) "SamplingTask",
 						TASK_STACK_SIZE_APP_CONTROLLER * 2, NULL,
-						TASK_PRIO_APP_CONTROLLER, &AppControllerHandle)) {
+						TASK_PRIO_SAMPLE_TASK, &AppControllerHandle)) {
 			retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
 		}
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - startTasks: AppControllerHandle = %p\r\n", AppControllerHandle);
+#endif
 	}
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
 				!= xTaskCreate(publishTelemetryMessageTask,
 						(const char* const ) "TelemetryPublisher",
 						TASK_STACK_SIZE_APP_CONTROLLER, NULL,
-						TASK_PRIO_APP_CONTROLLER + 1, &TelemetryHandle)) {
+						TASK_PRIO_PUBLISH_TELEMETRY_TASK, &TelemetryHandle)) {
 			retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
 		}
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - startTasks: TelemetryHandle = %p\r\n", TelemetryHandle);
+#endif
 	}
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
 				!= xTaskCreate(sendResponse, (const char* const ) "ResponseTask",
-						TASK_STACK_SIZE_APP_CONTROLLER , NULL,
-						TASK_PRIO_APP_CONTROLLER-1, &ResponseHandle)) {
+						TASK_STACK_SIZE_RESPONSE_TASK , NULL,
+						TASK_PRIO_SEND_RESPONSE_TASK, &ResponseHandle)) {
 			retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
 		}
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - startTasks: ResponseHandle = %p\r\n", ResponseHandle);
+#endif
 	}
 
 
@@ -752,9 +939,8 @@ Retcode_T resumeTasks(){
  * Sets up the MQTT subscriptions for commands and configuration
  * This task cancels itself after the first execution
  */
-static void MQTTSubscribe(void * param1, uint32_t param2) {
+static void MQTTSubscribe(void * param1) {
 	BCDS_UNUSED(param1);
-	BCDS_UNUSED(param2);
 	Retcode_T retcode = RETCODE_OK;
     if (RETCODE_OK == retcode)
     {
@@ -884,6 +1070,10 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 		retcode = Sensor_Enable();
 	}
 	SNTP_GetTimeFromServer(&sntpTime, 10000L);
+	if(sntpTime == 0) {
+		printf("[ERROR] - AppControllerEnable: SNTP time is 0!\r\n");
+		assert(0);
+	}
 	tickOffset = xTaskGetTickCount();
 
 	if (RETCODE_OK == retcode) {
@@ -906,9 +1096,12 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 		if (pdPASS
 				!= xTaskCreate(MQTTSubscribe, (const char* const ) "SubscribeTask",
 						TASK_STACK_SIZE_APP_CONTROLLER, NULL,
-						TASK_PRIO_APP_CONTROLLER, &MQTTSubscribeHandle)) {
+						TASK_PRIO_SUBSCRIBER_TASK, &MQTTSubscribeHandle)) {
 			retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
 		}
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - AppControllerEnable: MQTTSubscribeHandle = %p\r\n", MQTTSubscribeHandle);
+#endif
 	}
 
 
@@ -975,12 +1168,12 @@ static void AppControllerSetup(void * param1, uint32_t param2) {
 	}
 }
 
-char* formatTopic(char* baseTopic, const char* template) {
+char* formatTopic(char* resourceCategorization, const char* template) {
 	char* destination = NULL;
 	size_t sz0;
-	sz0 = snprintf(NULL, 0, template, baseTopic, deviceId);
+	sz0 = snprintf(NULL, 0, template, resourceCategorization, deviceId);
 	destination = (char*) malloc(sz0 + 1);
-	snprintf(destination, sz0 + 1, template, baseTopic, deviceId);
+	snprintf(destination, sz0 + 1, template, resourceCategorization, deviceId);
 	return destination;
 }
 
@@ -1004,9 +1197,6 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 		NULL, UINT32_C(0));
 	}
 
-
-
-
     if (RETCODE_OK == retcode)
     {
     	retcode = Storage_Setup(&StorageSetup);
@@ -1023,6 +1213,9 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 
     if ((RETCODE_OK == retcode) && (storageStatus == true)){
     	readConfigFromFile();
+    } else {
+    	printf("[FATAL ERROR] - AppController_Init: cannot read the config file.\r\n");
+    	assert(0);
     }
 
 
@@ -1036,57 +1229,58 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 	deviceId = (char *) malloc(sz0 + 1);
 	snprintf(deviceId, sz0 + 1, "%08x%08x", serialUnique1, serialUnique0);
 	MqttConnectInfo.ClientId = deviceId;
-	char* theTopic = formatTopic(baseTopic, "$create/iot-event/%s/%s/metrics");
+	char* theTopic = formatTopic(resourceCategorization, "$create/iot-event/%s/%s/metrics");
 	topic = theTopic;
 	MqttPublishInfo.Topic = theTopic;
 
-	char* tempTopic = formatTopic(baseTopic, "$create/iot-control/%s/device/%s/command");
+	char* tempTopic = formatTopic(resourceCategorization, "$create/iot-control/%s/device/%s/command");
 	MqttDeviceCommandSubscribeInfoSingleDevice.Topic = tempTopic;
 
-	tempTopic = formatTopic(baseTopic, "$update/iot-control/%s/device/%s/configuration");
+	tempTopic = formatTopic(resourceCategorization, "$update/iot-control/%s/device/%s/configuration");
 	MqttDeviceConfigurationSubscribeInfoSingleDevice.Topic = tempTopic;
 	const char* iotControlSDeviceCommandTemplate =
 			"$create/iot-control/%s/device/command";
-	tempTopic =formatTopic(baseTopic,
+	tempTopic =formatTopic(resourceCategorization,
 			iotControlSDeviceCommandTemplate);
 	MqttDeviceCommandSubscribeInfoRegionLocationProductionLine.Topic = tempTopic;
 	const char* iotControlSDeviceConfigurationTemplate =
 			"$update/iot-control/%s/device/configuration";
-	tempTopic =formatTopic(baseTopic,
+	tempTopic =formatTopic(resourceCategorization,
 			iotControlSDeviceConfigurationTemplate);
 	MqttDeviceConfigurationSubscribeInfoRegionLocationProductionLine.Topic = tempTopic;
 
-	char newBaseTopic[256] = "";
-	strcpy(newBaseTopic, baseTopic);
-	// chop last item of basetopic
+	char newResourceCategorization[256] = "";
+	strcpy(newResourceCategorization, resourceCategorization);
+	// chop last item off resourceCategorization
 	char* lastslash;
-	lastslash = strrchr(newBaseTopic, '/');
+	lastslash = strrchr(newResourceCategorization, '/');
 	if (lastslash !=NULL) *lastslash = '\0';
 
-	tempTopic =formatTopic(newBaseTopic, iotControlSDeviceCommandTemplate);
+	tempTopic =formatTopic(newResourceCategorization, iotControlSDeviceCommandTemplate);
 
 	MqttDeviceCommandSubscribeInfoRegionLocation.Topic = tempTopic;
 
-	tempTopic =formatTopic(newBaseTopic, iotControlSDeviceConfigurationTemplate);
+	tempTopic =formatTopic(newResourceCategorization, iotControlSDeviceConfigurationTemplate);
 
 	MqttDeviceConfigurationSubscribeInfoRegionLocation.Topic = tempTopic;
 
-	lastslash = strrchr(newBaseTopic, '/');
+	lastslash = strrchr(newResourceCategorization, '/');
 	if (lastslash !=NULL) *lastslash = '\0';
-	tempTopic =formatTopic(newBaseTopic, iotControlSDeviceCommandTemplate);
+	tempTopic =formatTopic(newResourceCategorization, iotControlSDeviceCommandTemplate);
 	MqttDeviceCommandSubscribeInfoRegion.Topic = tempTopic;
-	tempTopic =formatTopic(newBaseTopic, iotControlSDeviceConfigurationTemplate);
+	tempTopic =formatTopic(newResourceCategorization, iotControlSDeviceConfigurationTemplate);
 	MqttDeviceConfigurationSubscribeInfoRegion.Topic = tempTopic;
 
 	MqttDeviceCommandSubscribeAll.Topic = "$create/iot-control/device/command";
 
 	MqttDeviceConfigurationSubscribeAll.Topic = "$update/iot-control/device/configuration";
 
-	char* statusTopic = formatTopic(baseTopic, "$update/iot-control/%s/device/%s/status");
+	char* statusTopic = formatTopic(resourceCategorization, "$update/iot-control/%s/device/%s/status");
 	MqttPublishResponse.Topic = statusTopic;
 
 
-	responseQueue = xQueueCreate(3,64);
+	//responseQueue = xQueueCreate(3,64);
+	responseQueue = xQueueCreate(RESPONSE_QUEUE_DEPTH,RESPONSE_QUEUE_DATA_BUFFER_LENGTH);
 	if (responseQueue == NULL){
 		printf("queue not created");
 		retcode = RETCODE_FAILURE;
