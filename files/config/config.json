@@ -1,12 +1,12 @@
 {
 	"sntpURL":"0.uk.pool.ntp.org",
 	"sntpPort": 123,
-	"brokerURL":"mrred4fjoz.messaging.solace.cloud",
+	"brokerURL":"change_me, e.g. <server>.messaging.solace.cloud",
 	"brokerPort": 1883,
-	"brokerUsername":"solace-cloud-client",
+	"brokerUsername":"change_me, e.g. solace-cloud-client",
 	"brokerPassword":"change_me",
-	"mqttClientId":"default",
+	"mqttClientId":"change_me, e.g. default",
 	"wlanSSID":"change_me",
 	"wlanPSK":"change_me",
-	"resourceCategorization": "change_me, see: https://github.com/solace-iot-team/Bosch-IoT-Showcase/wiki/topic-templating"
+	"baseTopic": "change_me, see: https://github.com/solace-iot-team/Bosch-IoT-Showcase/wiki/topic-templating"
 }
