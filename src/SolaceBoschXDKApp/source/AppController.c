@@ -235,7 +235,6 @@ TickType_t tickOffset;
 // sempahore to synchronize access to the JSON object for samples
 SemaphoreHandle_t jsonPayloadHandle;
 
-
 // configuration file handling
 static uint8_t FileReadBuffer[WIFI_CFG_FILE_READ_BUFFER] = { 0 }; /**< Buffer to store the configuration file from the SD card / WiFi storage */
 static cJSON * config = NULL;
@@ -383,14 +382,14 @@ Retcode_T suspendTasks(void);
  */
 Retcode_T resumeTasks(void);
 
-
+Retcode_T createResumeTasksTimerTask(void);
 
 /**
  * Construct and emit a response status message straight without the queue
  */
-Retcode_T sendStatusResponseDirecty(cJSON * statusResponseInputJson) {
+Retcode_T sendStatusResponseDirectly(cJSON * statusResponseInputJson) {
 	Retcode_T retcode = RETCODE_OK;
-	printf("[INFO] - sendStatusResponseDirecty: starting ...\r\n");
+	printf("[INFO] - sendStatusResponseDirectly: starting ...\r\n");
 
 	cJSON * responseMsg = statusResponseInputJson;
 
@@ -422,11 +421,10 @@ Retcode_T sendStatusResponseDirecty(cJSON * statusResponseInputJson) {
 
 	MqttPublishResponse.Payload = s;
 	MqttPublishResponse.PayloadLength = s_length;
-#warning should be qos1
 	//MqttPublishResponse.QoS = 1UL;
 
 #ifndef NDEBUG_XDK_APP
-	printf("[DEBUG] - sendStatusResponseDirecty: MqttPublishResponse.Payload:\r\n%s\r\n", MqttPublishResponse.Payload);
+	printf("[DEBUG] - sendStatusResponseDirectly: MqttPublishResponse.Payload:\r\n%s\r\n", MqttPublishResponse.Payload);
 #endif
 
 	//printf("[TODO] - sendResponse: now do the publishing ...\r\n");
@@ -531,7 +529,6 @@ void sendResponse(void * param1) {
 
 			MqttPublishResponse.Payload = s;
 			MqttPublishResponse.PayloadLength = s_length;
-#warning should be qos1
 			//MqttPublishResponse.QoS = 1UL;
 
 #ifndef NDEBUG_XDK_APP
@@ -558,7 +555,6 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 
 	cJSON *inComingMsg = cJSON_Parse(param.Payload);
 	if (!inComingMsg) {
-#warning should send a status FAILED with reason back
 		printf("Error before: [%s]\r\n", cJSON_GetErrorPtr());
 		cJSON_Delete(inComingMsg);
 		return;
@@ -569,17 +565,10 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 	cJSON * exchangeIdJsonHandle = cJSON_GetObjectItem(inComingMsg, "exchangeId");
 	if(exchangeIdJsonHandle == NULL) {
 		printf("'exchangeId' - element not found, mandatory. aborting ...\r\n");
-#warning send FAILED status
 		cJSON_Delete(inComingMsg);
 		return;
 	}
 	cJSON_AddItemToObject(statusResponseInputJson, "exchangeId", cJSON_CreateString(exchangeIdJsonHandle->valuestring));
-
-#ifndef NDEBUG_XDK_APP
-		char * jsonStr = cJSON_Print(statusResponseInputJson);
-		printf("[DEBUG] - subscriptionCallBack: 1-statusResponseInputJson:\r\n%s\r\n", jsonStr);
-		free(jsonStr);
-#endif
 
 		////////////////// CONFIGURATION
 	if (strstr(param.Topic, "configuration") == NULL) {
@@ -589,7 +578,6 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		cJSON * tagsJsonHandle = cJSON_GetObjectItem(inComingMsg, "tags");
 		if(tagsJsonHandle == NULL) {
 			printf("'tags' - element not found, mandatory for configuration messages. aborting ...\r\n");
-	#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
@@ -599,8 +587,8 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		cJSON_AddItemToObject(statusResponseInputJson, "requestType", cJSON_CreateString("CONFIGURATION"));
 
 #ifndef NDEBUG_XDK_APP
-		jsonStr = cJSON_Print(statusResponseInputJson);
-		printf("[DEBUG] - subscriptionCallBack: 2 - statusResponseInputJson:\r\n%s\r\n", jsonStr);
+		char * jsonStr = cJSON_Print(statusResponseInputJson);
+		printf("[DEBUG] - subscriptionCallBack: - statusResponseInputJson:\r\n%s\r\n", jsonStr);
 		free(jsonStr);
 #endif
 
@@ -608,7 +596,6 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		cJSON *sensors = cJSON_GetObjectItem(inComingMsg, "sensors");
 		if (sensors == NULL || cJSON_GetArraySize(sensors) <1) {
 			printf("'sensors' - element not found, mandatory for configuration messages. aborting ...\r\n");
-	#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
@@ -620,25 +607,28 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 				"samplesPerEvent");
 		if (numberOfEventsPerSecond == NULL || numberOfSamplesPerEvent == NULL){
 			printf("telemetryEventFrequency or samplesPerEvent not supplied");
-#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
-		samplesPerEvent = numberOfSamplesPerEvent->valueint;
-		publishFrequency = 1000 / numberOfEventsPerSecond->valueint; // convert to milliseconds
-		samplingFrequency = publishFrequency / samplesPerEvent;
-		if (publishFrequency == 0 || samplingFrequency == 0){
+
+		uint32_t newSamplesPerEvent = numberOfSamplesPerEvent->valueint;
+		uint32_t newPublishFrequency = 1000 / numberOfEventsPerSecond->valueint; // convert to milliseconds
+		uint32_t newSamplingFrequency = newPublishFrequency / newSamplesPerEvent;
+		if (newPublishFrequency == 0 || newSamplingFrequency == 0){
 			printf("invalid publishingFrequency or samplingFrequency calculated");
 			cJSON_Delete(inComingMsg);
 			return;
 		}
+
 		// wait until changes shall be implemented
 		cJSON * delay = cJSON_GetObjectItem(inComingMsg, "delay");
 		int delayTicks = SECONDS(delay->valueint);
+
 		vTaskDelay(delayTicks);
+
+		// now suspend all tasks and implement the changes
+		printf("[INFO] - subscriptionCallBack: suspending all tasks ...\r\n");
 		suspendTasks();
-		printf("Set publish interval to %i ms, set sample interval to %i ms\n",
-				(int) publishFrequency, (int) samplingFrequency);
 
 		// enable/disable sensor capture
 		// disable all sensors
@@ -676,10 +666,17 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			actSensor = NULL;
 		}
 
+		// change sampling frequency
+		samplesPerEvent = newSamplesPerEvent;
+		publishFrequency = newPublishFrequency;
+		samplingFrequency = newSamplingFrequency;
+		printf("Set publish interval to %i ms, set sample interval to %i ms\n",
+				(int) publishFrequency, (int) samplingFrequency);
+
 		cJSON_AddItemToObject(statusResponseInputJson, "status", cJSON_CreateString("SUCCESS"));
 
 		//send the response directly without the queue...
-		Retcode_T retcode = sendStatusResponseDirecty(statusResponseInputJson);
+		Retcode_T retcode = sendStatusResponseDirectly(statusResponseInputJson);
 		if(RETCODE_OK != retcode) {
 			printf("[ERROR] - subscriptionCallBack:sendStatusResponseDirectly(): failed.\r\n");
 			Retcode_RaiseError(retcode);
@@ -709,6 +706,8 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			//assert(0);
 		}
 */
+
+		printf("[INFO] - subscriptionCallBack: resuming all tasks ...\r\n");
 		resumeTasks();
 
 	}
@@ -719,7 +718,6 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		cJSON * command = cJSON_GetObjectItem(inComingMsg, "command");
 		if (command == NULL) {
 			printf("'command' - element not found, mandatory for command messages. aborting ...\r\n");
-	#warning send FAILED status
 			cJSON_Delete(inComingMsg);
 			return;
 		}
@@ -729,7 +727,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		cJSON_AddItemToObject(statusResponseInputJson, "status", cJSON_CreateString("SUCCESS"));
 
 		//send the response directly without the queue...
-		Retcode_T retcode = sendStatusResponseDirecty(statusResponseInputJson);
+		Retcode_T retcode = sendStatusResponseDirectly(statusResponseInputJson);
 		if(RETCODE_OK != retcode) {
 			printf("[ERROR] - subscriptionCallBack:sendStatusResponseDirectly(): failed.\r\n");
 			Retcode_RaiseError(retcode);
@@ -1011,8 +1009,14 @@ Retcode_T suspendTasks(){
  */
 Retcode_T resumeTasks(){
 	Retcode_T retcode = RETCODE_OK;
-	vTaskResume(TelemetryHandle);
+	// the order is important
+	// first low prio tasks
+	// then high prio tasks
+	// otherwise, telemetry is taking too much air-time before sampling has implemented the changes
 	vTaskResume(AppControllerHandle);
+	// we need to give a bit more time to compose itself
+	vTaskDelay(MILLISECONDS(500));
+	vTaskResume(TelemetryHandle);
 	//vTaskResume(ResponseHandle);
 	return retcode;
 }
@@ -1154,8 +1158,7 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 	// try multiple times until we have a time, otherwise abort
     int sntpTriesloopCounter = 0;
 	bool sntpSuccess = false;
-    while (!sntpSuccess && sntpTriesloopCounter++ < 5) {
-    	vTaskDelay(1000);
+    while (!sntpSuccess && sntpTriesloopCounter++ < 10) {
     	printf("[INFO] - AppControllerEnable: retrieving time from SNTP server, tries: %d\r\n", sntpTriesloopCounter);
 
     	retcode = SNTP_GetTimeFromServer(&sntpTime, 10000L);

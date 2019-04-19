@@ -61,7 +61,8 @@
 #define TASK_PRIO_SAMPLE_TASK						(UINT32_C(3))
 #define TASK_PRIO_PUBLISH_TELEMETRY_TASK			(UINT32_C(4))
 #define TASK_PRIO_SUBSCRIBER_TASK					(UINT32_C(3))
-#define TASK_PRIO_SEND_RESPONSE_TASK				(UINT32_C(2))
+// not used any more
+//#define TASK_PRIO_SEND_RESPONSE_TASK				(UINT32_C(2))
 
 #ifdef NOT_USED
 /** SET-2 **/
