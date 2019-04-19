@@ -12,13 +12,19 @@ export BCDS_APP_DIR = $(CURDIR)
 export BCDS_APP_SOURCE_DIR = $(BCDS_APP_DIR)/source
 export BCDS_FREERTOS_INCLUDE_AWS=1
 
-#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP 
+# Flag to switch on/off debugging info & code
+# defined: switched off
+# not defined: switched on
+#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP
+# add debug info to the metrics when publishing 
+#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP_PUBLISH 
+export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH
 
 
 # Macro for server cetificate which is used for secure communication.
 # User can provide custom server certificate as well.
 # By default the test.mosquito.org MQTT open source broker certificate is configured.
-export XDK_APP_CERTIFICATE_NAME = Mosquitto
+export XDK_APP_CERTIFICATE_NAME = Solace
 #Please refer BCDS_CFLAGS_COMMON variable in application.mk file
 #and if any addition flags required then add that flags only in the below macro 
 #export BCDS_CFLAGS_COMMON =

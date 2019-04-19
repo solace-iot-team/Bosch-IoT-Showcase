@@ -241,7 +241,7 @@ static cJSON * config = NULL;
 char* baseTopic = APP_MQTT_BASE_TOPIC;
 
 // configuration variables - govern behaviour of the appliaction - activated sensors, publishing and sampling frequency etc
-uint32_t samplesPerEvent = APP_MQTT_DATA_PUBLISH_PERIODICITY/APP_MQTT_DATA_SAMPLING_PERIODICITY;
+uint8_t samplesPerEvent = APP_MQTT_DATA_PUBLISH_PERIODICITY/APP_MQTT_DATA_SAMPLING_PERIODICITY;
 
 uint32_t samplingFrequency = APP_MQTT_DATA_SAMPLING_PERIODICITY;
 uint32_t publishFrequency = APP_MQTT_DATA_PUBLISH_PERIODICITY;
@@ -389,8 +389,9 @@ Retcode_T createResumeTasksTimerTask(void);
  */
 Retcode_T sendStatusResponseDirectly(cJSON * statusResponseInputJson) {
 	Retcode_T retcode = RETCODE_OK;
+#ifndef NDEBUG_XDK_APP
 	printf("[INFO] - sendStatusResponseDirectly: starting ...\r\n");
-
+#endif
 	cJSON * responseMsg = statusResponseInputJson;
 
 	cJSON_AddItemToObject(responseMsg, "deviceId", cJSON_CreateString(deviceId));
@@ -436,6 +437,10 @@ Retcode_T sendStatusResponseDirectly(cJSON * statusResponseInputJson) {
 /**
  * Construct and emit a response status message with a queue
  */
+#ifdef USE_RESPONSE_QUEUE
+
+//Note: don't use as is - very cumbersome and memory intensive.
+//instead, create the JSON on heap and pass the pointer, no need to serialize/deserialize
 
 #define RESPONSE_QUEUE_DATA_BUFFER_LENGTH	sizeof(char*)
 #define RESPONSE_QUEUE_DEPTH				3
@@ -544,7 +549,7 @@ void sendResponse(void * param1) {
 		vTaskDelay(MILLISECONDS(500));
 	}
 }
-
+#endif
 /**
  * Callback to handle events received via MQTT subscriptions
  * One handler for configuration and command events - the function handles both event types.
@@ -611,7 +616,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			return;
 		}
 
-		uint32_t newSamplesPerEvent = numberOfSamplesPerEvent->valueint;
+		uint8_t newSamplesPerEvent = numberOfSamplesPerEvent->valueint;
 		uint32_t newPublishFrequency = 1000 / numberOfEventsPerSecond->valueint; // convert to milliseconds
 		uint32_t newSamplingFrequency = newPublishFrequency / newSamplesPerEvent;
 		if (newPublishFrequency == 0 || newSamplingFrequency == 0){
@@ -683,7 +688,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		}
 		cJSON_Delete(statusResponseInputJson);
 
-/*
+#ifdef USE_RESPONSE_QUEUE
 		char * statusResponseInputJsonText = cJSON_PrintUnformatted(statusResponseInputJson);
 		int size = snprintf(NULL, 0, "%s", statusResponseInputJsonText);
 #ifndef NDEBUG_XDK_APP
@@ -705,7 +710,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			// ignore for now
 			//assert(0);
 		}
-*/
+#endif
 
 		printf("[INFO] - subscriptionCallBack: resuming all tasks ...\r\n");
 		resumeTasks();
@@ -733,7 +738,8 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			Retcode_RaiseError(retcode);
 		}
 		cJSON_Delete(statusResponseInputJson);
-/*
+
+#ifdef USE_RESPONSE_QUEUE
 		char * statusResponseInputJsonText = cJSON_PrintUnformatted(statusResponseInputJson);
 		int size = snprintf(NULL, 0, "%s", statusResponseInputJsonText);
 		char * responseInputJsonDataBuffer = malloc(size+1);
@@ -752,7 +758,7 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 			//ignore for now
 			//assert(0);
 		}
-*/
+#endif
 		char *rebootCommand = strstr(command->valuestring, "REBOOT");
 		if (rebootCommand != NULL) {
 			cJSON * delay = cJSON_GetObjectItem(inComingMsg, "delay");
@@ -771,43 +777,63 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
  * Publishes telemetry data
  * Serialises the samples stored in cJSON *root variable and publishes MQTT message
  */
-static void publishTelemetryMessage(void * param1, uint32_t param2)
-{
+static void publishTelemetryMessage(void * param1, uint32_t param2) {
     BCDS_UNUSED(param1);
     BCDS_UNUSED(param2);
-    char *s = NULL;
-    int sampleCount=-1;
-	if (xSemaphoreTake(jsonPayloadHandle,
-			(TickType_t ) publishFrequency) == pdTRUE) {
-		s = cJSON_PrintUnformatted(root);
-		sampleCount = cJSON_GetArraySize(root);
-		cJSON_Delete(root);
-		root = cJSON_CreateArray();
-		xSemaphoreGive(jsonPayloadHandle);
-	} else {
-		printf("publishing blocked\n");
+
+    // check if we can modify root, if not, return
+	if (pdFALSE == xSemaphoreTake(jsonPayloadHandle, (TickType_t ) publishFrequency) ) {
+		printf("[INFO] - publishTelemetryMessage: BLOCKED by Semaphore. Not sending.\r\n");
+#ifndef NDEBUG_XDK_APP
+		vTaskDelay(MILLISECONDS(500));
+#endif
 		return;
 	}
+	// now we can read / modify root
+    int sampleCount = cJSON_GetArraySize(root);
+    if(sampleCount == 0) {
+    	// nothing to publish
+		printf("[INFO] - publishTelemetryMessage: sampleCount=0, nothing to publish.\r\n");
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - publishTelemetryMessage: sampleCount=0, nothing to publish.\r\n");
+#endif
+		xSemaphoreGive(jsonPayloadHandle);
+		vTaskDelay(MILLISECONDS(50));
+    	return;
+    }
+
+    char *s = cJSON_PrintUnformatted(root);
+
+	cJSON_Delete(root);
+	root = cJSON_CreateArray();
+	xSemaphoreGive(jsonPayloadHandle);
+
 	int32_t s_length = strlen(s);
-	if (s_length <= 975 && sampleCount >0) {
+
+	if(s_length <= 975) {
+		//max length SERVAL allows to publish
 		MqttPublishInfo.Payload = s;
 		MqttPublishInfo.PayloadLength = s_length;
 		MqttPublishInfo.QoS = 0UL;
 
-		//printf("publishTelemetryMessage: publishing metrics on topic: %s\r\n", MqttPublishInfo.Topic);
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - publishTelemetryMessage: publishing:\r\n");
+		printf("\ttopic:%s\r\n", MqttPublishInfo.Topic);
+		printf("\tpayload:%s\r\n", MqttPublishInfo.Payload);
+		//vTaskDelay(MILLISECONDS(500));
+#endif
 
 		Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishInfo, MQTT_PUBLISH_TIMEOUT_IN_MS);
-		//printf("mqtt publish successful %i\n", retcode == RETCODE_OK);
 		if (RETCODE_OK != retcode) {
+			// re-connect if disconnected
+			printf("[INFO] - publishTelemetryMessage: re-connecting to mqtt broker.\r\n");
 			vTaskSuspend(AppControllerHandle);
 
 			int reconnected = 0;
 			for (int i = 1; i <= 5; i++){
-				retcode = MQTT_ConnectToBroker(&MqttConnectInfo,
-						MQTT_CONNECT_TIMEOUT_IN_MS);
+				retcode = MQTT_ConnectToBroker(&MqttConnectInfo, MQTT_CONNECT_TIMEOUT_IN_MS);
 				if (RETCODE_OK != retcode) {
-					printf(
-							"publishTelemetryMessage : MQTT connection to the broker failed attempt %i\n\r", i);
+					printf("[WARNING] - publishTelemetryMessage : MQTT connection to the broker failed, attempt %i\n\r", i);
 				} else {
 					reconnected = 1;
 					break;
@@ -815,26 +841,23 @@ static void publishTelemetryMessage(void * param1, uint32_t param2)
 				vTaskDelay(MILLISECONDS(i*500));
 			}
 			if (!reconnected) {
-				printf("publishTelemetryMessage : MQTT re-connection to the broker failed \n\r");
+				printf("[FATAL ERROR] - publishTelemetryMessage : MQTT re-connection to the broker failed, re-booting \n\r");
 				BSP_Board_SoftReset();
 			}
-				printf(
-						"publishTelemetryMessage : resume MQTT publishing \n\r");
+			printf("[INFO] - publishTelemetryMessage : re-connected. resuming MQTT publishing...\n\r");
 			LED_Toggle(LED_INBUILT_ORANGE);
 			LED_Toggle(LED_INBUILT_YELLOW);
-//				Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishInfo,
-//				MQTT_PUBLISH_TIMEOUT_IN_MS);
-
 			resumeTasks();
 		}
 		MqttPublishInfo.QoS = 1UL;
 	} else {
 		printf("[WARNING] - publishTelemetryMessage: not publishing, because:\r\n");
-		printf("\ts = %s\r\n", s);
 		printf("\ttelemetry payload length = %ld\r\n", s_length);
+		printf("\ts = %s\r\n", s);
 		printf("\tsampleCount = %i\r\n", sampleCount);
 	}
 	free(s);
+
 }
 
 /**
@@ -864,101 +887,126 @@ static void SampleTask(void* pvParameters) {
 	Retcode_T retCode = RETCODE_OK;
     Sensor_Value_T sensorValue;
     memset(&sensorValue, 0x00, sizeof(sensorValue));
-    while (1){
-	    TickType_t startTicks = xTaskGetTickCount();
-		retCode = Sensor_GetData(&sensorValue);
-		if(RETCODE_OK != retCode) {
-			printf("[ERROR] - SampleTask: error getting sensor data with Sensor_GetData()\r\n");
-			Retcode_RaiseError(retCode);
-		}
-		// create the timestamp
-		char *date;
-		// add ticks to sntp time - need to convert sntp time to milliseconds
-		TickType_t ticks = xTaskGetTickCount()-tickOffset;
-		uint64_t millisSinceEpoch = (uint64_t)ticks + (sntpTime*1000);
+#ifndef NDEBUG_XDK_APP_PUBLISH
+    uint32_t samplesCallsCounter = 0;
+#endif
 
-		uint64_t seconds = millisSinceEpoch / 1000;
-		int millis = millisSinceEpoch % 1000;
-		// now format time stamp
-		time_t tt = (time_t) seconds;
-		struct tm * gmTime = gmtime(&tt);
-		size_t sz;
-		sz = snprintf(NULL, 0, "20%02d-%02d-%02dT%02d:%02d:%02d.%03iZ",
-				gmTime->tm_year - 100, gmTime->tm_mon + 1, gmTime->tm_mday,
-				gmTime->tm_hour, gmTime->tm_min, gmTime->tm_sec, millis);
-		date = (char *) malloc(sz + 1);
-		snprintf(date, sz + 1, "20%02d-%02d-%02dT%02d:%02d:%02d.%03iZ",
-				gmTime->tm_year - 100, gmTime->tm_mon + 1, gmTime->tm_mday,
-				gmTime->tm_hour, gmTime->tm_min, gmTime->tm_sec, millis);
-		// set up the JSON payload
-		if ((int)samplesPerEvent > cJSON_GetArraySize(root)  && xSemaphoreTake(jsonPayloadHandle,
-				(TickType_t ) samplingFrequency) == pdTRUE) {
-			cJSON *sample;
-			sample = cJSON_CreateObject();
-			cJSON_AddItemToObject(sample, "timestamp",
-					cJSON_CreateString(date));
-			cJSON_AddItemToObject(sample, "deviceId",
-					cJSON_CreateString(deviceId));
-			if (isHumidity) {
-				cJSON_AddNumberToObject(sample, "humidity",
-						(long int ) sensorValue.RH);
-			}
-			if (isLight) {
-				cJSON_AddNumberToObject(sample, "light",
-						(long int ) sensorValue.Light);
-			}
-			if (isTemperature) {
-				cJSON_AddNumberToObject(sample, "temperature",
-						(sensorValue.Temp /= 1000));
-			}
-			if (isAccelerator) {
-				cJSON_AddNumberToObject(sample, "acceleratorX",
-						sensorValue.Accel.X);
-				cJSON_AddNumberToObject(sample, "acceleratorY",
-						sensorValue.Accel.Y);
-				cJSON_AddNumberToObject(sample, "acceleratorZ",
-						sensorValue.Accel.Z);
-			}
-			if (isGyro) {
-				cJSON_AddNumberToObject(sample, "gyroX", sensorValue.Gyro.X);
-				cJSON_AddNumberToObject(sample, "gyroY", sensorValue.Gyro.Y);
-				cJSON_AddNumberToObject(sample, "gyroZ", sensorValue.Gyro.Z);
-			}
-			if (isMagneto) {
-				cJSON_AddNumberToObject(sample, "magR", sensorValue.Mag.R);
-				cJSON_AddNumberToObject(sample, "magX", sensorValue.Mag.X);
-				cJSON_AddNumberToObject(sample, "magY", sensorValue.Mag.Y);
-				cJSON_AddNumberToObject(sample, "magZ", sensorValue.Mag.Z);
-			}
-			//printf("Sample %s\n", date);
-			cJSON_AddItemToArray(root, sample);
-			xSemaphoreGive(jsonPayloadHandle);
+    while (1) {
+#ifndef NDEBUG_XDK_APP_PUBLISH
+    	samplesCallsCounter++;
+#endif
+	    TickType_t startTicks = xTaskGetTickCount();
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - SampleTask: starting while loop again...\r\n");
+		//vTaskDelay(MILLISECONDS(500));
+#endif
+#ifndef NDEBUG_XDK_APP
+		printf("[DEBUG] - SampleTask: samplingFrequency=%ld\r\n", samplingFrequency);
+		//vTaskDelay(MILLISECONDS(500));
+#endif
+
+		// check if we can access root first
+		if (pdFALSE == xSemaphoreTake(jsonPayloadHandle, (TickType_t ) samplingFrequency)) {
+			printf("[INFO] - SampleTask: BLOCKED by Semaphore. Not sampling.\r\n");
+#ifndef NDEBUG_XDK_APP
+			//vTaskDelay(MILLISECONDS(500));
+#endif
 		} else {
-			printf("[WARNING] - SampleTask: Sampling blocked\n");
-//#ifndef NDEBUG_XDK_APP
-	   		// let's find out why
-			int arraySize = cJSON_GetArraySize(root) ;
-			printf("\tsamplesPerEvent = %i\r\n", (int)samplesPerEvent);
-			printf("\tcJSON_GetArraySize(root) = %i\r\n", arraySize);
-//#endif
-		}
-		free(date);
+			// check if last sample was sent out
+			// by publishTelemetryMessage()
+			// - sets root to empty array if sent out
+			uint8_t samplesCollected = cJSON_GetArraySize(root);
+			if ( samplesCollected == samplesPerEvent ) {
+				printf("[INFO] - SampleTask: last sample collection not sent out yet, not sampling new values.\r\n");
+#ifndef NDEBUG_XDK_APP
+				//vTaskDelay(MILLISECONDS(500));
+#endif
+			} else {
+				// now we are good to go
+
+				retCode = Sensor_GetData(&sensorValue);
+				if(RETCODE_OK != retCode) {
+					printf("[ERROR] - SampleTask: Sensor_GetData() failed:\r\n");
+					Retcode_RaiseError(retCode);
+#ifndef NDEBUG_XDK_APP
+					vTaskDelay(MILLISECONDS(1000));
+#endif
+				}
+				// create the timestamp
+				char *date;
+				TickType_t ticks = xTaskGetTickCount()-tickOffset;
+				uint64_t millisSinceEpoch = (uint64_t)ticks + (sntpTime*1000);
+
+				uint64_t seconds = millisSinceEpoch / 1000;
+				int millis = millisSinceEpoch % 1000;
+				// now format time stamp
+				time_t tt = (time_t) seconds;
+				struct tm * gmTime = gmtime(&tt);
+				size_t sz;
+				sz = snprintf(NULL, 0, "20%02d-%02d-%02dT%02d:%02d:%02d.%03iZ",
+						gmTime->tm_year - 100, gmTime->tm_mon + 1, gmTime->tm_mday,
+						gmTime->tm_hour, gmTime->tm_min, gmTime->tm_sec, millis);
+				date = (char *) malloc(sz + 1);
+				snprintf(date, sz + 1, "20%02d-%02d-%02dT%02d:%02d:%02d.%03iZ",
+						gmTime->tm_year - 100, gmTime->tm_mon + 1, gmTime->tm_mday,
+						gmTime->tm_hour, gmTime->tm_min, gmTime->tm_sec, millis);
+				// now take the samples
+				cJSON *sample;
+				sample = cJSON_CreateObject();
+				cJSON_AddItemToObject(sample, "timestamp", cJSON_CreateString(date));
+				free(date);
+				cJSON_AddItemToObject(sample, "deviceId", cJSON_CreateString(deviceId));
+#ifndef NDEBUG_XDK_APP_PUBLISH
+				cJSON_AddItemToObject(sample, "samplesSeq", cJSON_CreateNumber(samplesCallsCounter));
+#endif
+
+				if (isHumidity) cJSON_AddNumberToObject(sample, "humidity", (long int ) sensorValue.RH);
+
+				if (isLight) cJSON_AddNumberToObject(sample, "light", (long int ) sensorValue.Light);
+
+				if (isTemperature) cJSON_AddNumberToObject(sample, "temperature", (sensorValue.Temp /= 1000));
+
+				if (isAccelerator) {
+					cJSON_AddNumberToObject(sample, "acceleratorX", sensorValue.Accel.X);
+					cJSON_AddNumberToObject(sample, "acceleratorY", sensorValue.Accel.Y);
+					cJSON_AddNumberToObject(sample, "acceleratorZ", sensorValue.Accel.Z);
+				}
+				if (isGyro) {
+					cJSON_AddNumberToObject(sample, "gyroX", sensorValue.Gyro.X);
+					cJSON_AddNumberToObject(sample, "gyroY", sensorValue.Gyro.Y);
+					cJSON_AddNumberToObject(sample, "gyroZ", sensorValue.Gyro.Z);
+				}
+				if (isMagneto) {
+					cJSON_AddNumberToObject(sample, "magR", sensorValue.Mag.R);
+					cJSON_AddNumberToObject(sample, "magX", sensorValue.Mag.X);
+					cJSON_AddNumberToObject(sample, "magY", sensorValue.Mag.Y);
+					cJSON_AddNumberToObject(sample, "magZ", sensorValue.Mag.Z);
+				}
+#ifndef NDEBUG_XDK_APP
+				char * jsonStr = cJSON_Print(sample);
+				printf("[DEBUG] - SampleTask: sample:\r\n%s\r\n", jsonStr);
+				free(jsonStr);
+#endif
+				//do not delete sample, root points to it's contents
+				cJSON_AddItemToArray(root, sample);
+			} // good to go
+			xSemaphoreGive(jsonPayloadHandle);
+		} // got the semaphore
+
 	    TickType_t endTicks = xTaskGetTickCount();
 		vTaskDelay(samplingFrequency-(endTicks-startTicks));
-    }
+    } // while
 }
 
 Retcode_T startTasks(Retcode_T retcode) {
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
-				!= xTaskCreate(SampleTask, (const char* const ) "SamplingTask",
+				!= xTaskCreate(SampleTask, (const char* const ) "SampleTask",
 						TASK_STACK_SIZE_APP_CONTROLLER * 2, NULL,
 						TASK_PRIO_SAMPLE_TASK, &AppControllerHandle)) {
-			retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
+			retcode = RETCODE(RETCODE_SEVERITY_FATAL, RETCODE_OUT_OF_RESOURCES);
+			return retcode;
 		}
-#ifndef NDEBUG_XDK_APP
-		printf("[DEBUG] - startTasks: AppControllerHandle = %p\r\n", AppControllerHandle);
-#endif
 	}
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
@@ -966,18 +1014,12 @@ Retcode_T startTasks(Retcode_T retcode) {
 						(const char* const ) "TelemetryPublisher",
 						TASK_STACK_SIZE_APP_CONTROLLER, NULL,
 						TASK_PRIO_PUBLISH_TELEMETRY_TASK, &TelemetryHandle)) {
-			retcode = RETCODE(RETCODE_SEVERITY_ERROR, RETCODE_OUT_OF_RESOURCES);
+			retcode = RETCODE(RETCODE_SEVERITY_FATAL, RETCODE_OUT_OF_RESOURCES);
+			return retcode;
 		}
-#ifndef NDEBUG_XDK_APP
-		printf("[DEBUG] - startTasks: TelemetryHandle = %p\r\n", TelemetryHandle);
-#endif
-	}
+}
 
-/*************
- * Not used but keep if needed.
- *
- *
-
+#ifdef USE_RESPONSE_QUEUE
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
 				!= xTaskCreate(sendResponse, (const char* const ) "ResponseTask",
@@ -989,7 +1031,7 @@ Retcode_T startTasks(Retcode_T retcode) {
 		printf("[DEBUG] - startTasks: ResponseHandle = %p\r\n", ResponseHandle);
 #endif
 	}
-*/
+#endif
 
 	return retcode;
 }
@@ -999,9 +1041,16 @@ Retcode_T startTasks(Retcode_T retcode) {
  */
 Retcode_T suspendTasks(){
 	Retcode_T retcode = RETCODE_OK;
-	vTaskSuspend(TelemetryHandle);
+	// it seems that with suspend/resume tasks
+	// the processor starts misbehaving over time
+	// by introducing the delay, it works better, not perfectly.
+	vTaskDelay(MILLISECONDS(500));
 	vTaskSuspend(AppControllerHandle);
+	vTaskDelay(MILLISECONDS(500));
+	vTaskSuspend(TelemetryHandle);
+#ifdef USE_RESPONSE_QUEUE
 	//vTaskSuspend(ResponseHandle);
+#endif
 	return retcode;
 }
 /**
@@ -1009,15 +1058,17 @@ Retcode_T suspendTasks(){
  */
 Retcode_T resumeTasks(){
 	Retcode_T retcode = RETCODE_OK;
-	// the order is important
-	// first low prio tasks
-	// then high prio tasks
-	// otherwise, telemetry is taking too much air-time before sampling has implemented the changes
+// Note:
+	// sometimes, it seems as if some tasks are not resumed again
+	// effect: XDK 'hangs'
+	// solution: send a new command in
+	vTaskDelay(MILLISECONDS(500));
 	vTaskResume(AppControllerHandle);
-	// we need to give a bit more time to compose itself
 	vTaskDelay(MILLISECONDS(500));
 	vTaskResume(TelemetryHandle);
+#ifdef USE_RESPONSE_QUEUE
 	//vTaskResume(ResponseHandle);
+#endif
 	return retcode;
 }
 
@@ -1376,13 +1427,14 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 	char* statusTopic = formatTopic(baseTopic, "$update/iot-control/%s/device/%s/status");
 	MqttPublishResponse.Topic = statusTopic;
 
-
+#ifdef USE_RESPONSE_QUEUE
 	//responseQueue = xQueueCreate(3,64);
 	responseQueue = xQueueCreate(RESPONSE_QUEUE_DEPTH,RESPONSE_QUEUE_DATA_BUFFER_LENGTH);
 	if (responseQueue == NULL){
 		printf("queue not created");
 		retcode = RETCODE_FAILURE;
 	}
+#endif
 
 	root = cJSON_CreateArray();
 	jsonPayloadHandle = xSemaphoreCreateMutex();
