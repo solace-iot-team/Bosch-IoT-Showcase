@@ -38,6 +38,7 @@
 #include "BCDS_BSP_Board.h"
 #include "BCDS_CmdProcessor.h"
 #include "BCDS_NetworkConfig.h"
+#include <BCDS_WlanConnect.h>
 #include "BCDS_Assert.h"
 #include "BCDS_Accelerometer.h"
 #include "XDK_Utils.h"
@@ -436,10 +437,11 @@ Retcode_T sendStatusResponseDirectly(cJSON * statusResponseInputJson) {
 	return retcode;
 }
 
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 /**
  * Construct and emit a response status message with a queue
  */
-#ifdef USE_RESPONSE_QUEUE
 
 //Note: don't use as is - very cumbersome and memory intensive.
 //instead, create the JSON on heap and pass the pointer, no need to serialize/deserialize
@@ -690,7 +692,8 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		}
 		cJSON_Delete(statusResponseInputJson);
 
-#ifdef USE_RESPONSE_QUEUE
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 		char * statusResponseInputJsonText = cJSON_PrintUnformatted(statusResponseInputJson);
 		int size = snprintf(NULL, 0, "%s", statusResponseInputJsonText);
 #ifndef NDEBUG_XDK_APP
@@ -741,7 +744,8 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 		}
 		cJSON_Delete(statusResponseInputJson);
 
-#ifdef USE_RESPONSE_QUEUE
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 		char * statusResponseInputJsonText = cJSON_PrintUnformatted(statusResponseInputJson);
 		int size = snprintf(NULL, 0, "%s", statusResponseInputJsonText);
 		char * responseInputJsonDataBuffer = malloc(size+1);
@@ -783,9 +787,12 @@ static Retcode_T connect2Broker(void) {
 
 	LED_Pattern(true, LED_PATTERN_ROLLING, MILLISECONDS(500));
 
+	bool wlanConnected = false;
 	bool connected = false;
 	int i;
-	for (i = 1; i <= 10; i++){
+	for (i = 1; i <= 10; i++) {
+		wlanConnected = !( (WLAN_DISCONNECTED == WlanConnect_GetStatus()) || (NETWORKCONFIG_IP_NOT_ACQUIRED == NetworkConfig_GetIpStatus()));
+		if (!wlanConnected) break;
 		retcode = MQTT_ConnectToBroker(&MqttConnectInfo, MQTT_CONNECT_TIMEOUT_IN_MS);
 		if (RETCODE_OK != retcode) {
 			printf("[WARNING] - connect2Broker : MQTT connection to the broker failed, attempt %i\n\r", i);
@@ -794,9 +801,7 @@ static Retcode_T connect2Broker(void) {
 			connected = true;
 			break;
 		}
-		// TODO: should we wait same time as MQTT library timeout?
 		vTaskDelay(MILLISECONDS(MQTT_CONNECT_TIMEOUT_IN_MS * i));
-		//vTaskDelay(MILLISECONDS(i*500));
 	}
 	if (!connected) {
 		printf("[ERROR] - connect2Broker : MQTT re-connection to the broker failed. \n\r");
@@ -815,16 +820,34 @@ static void callConnect2BrokerFromTelemetryPublishing(void * param1, uint32_t pa
 	BCDS_UNUSED(param1);
 	BCDS_UNUSED(param2);
 
+	LED_Pattern(true, LED_PATTERN_ROLLING, MILLISECONDS(500));
+
 	suspendTasks();
 
-	Retcode_T retcode = connect2Broker();
-	if (RETCODE_OK != retcode) {
-		// what is the best action here?
-		// reset the board...
-		printf("[FATAL ERROR] - callConnect2BrokerFromTelemetryPublishing : MQTT re-connection to the broker failed, re-booting in 5 secs ...\n\r");
-		vTaskDelay(MILLISECONDS(5000));
-		BSP_Board_SoftReset();
-	}
+	// waits forever until we have full connectivity
+	bool wlanConnected = false;
+	bool brokerConnected = false;
+	do {
+		wlanConnected = !( (WLAN_DISCONNECTED == WlanConnect_GetStatus()) || (NETWORKCONFIG_IP_NOT_ACQUIRED == NetworkConfig_GetIpStatus()));
+		if(!wlanConnected) {
+			printf("[WARNING] - callConnect2BrokerFromTelemetryPublishing : no WLAN connectivity, waiting for 5 seconds ...\n\r");
+			vTaskDelay(MILLISECONDS(5000));
+		} else {
+			printf("[INFO] - callConnect2BrokerFromTelemetryPublishing : WLAN connected. trying to connect to broker ...\n\r");
+			Retcode_T retcode = connect2Broker();
+			if(RETCODE_OK == retcode) brokerConnected = true;
+			else {
+				printf("[WARNING] - callConnect2BrokerFromTelemetryPublishing : MQTT re-connection to the broker failed, waiting for 5 secs ...\n\r");
+				vTaskDelay(MILLISECONDS(5000));
+			}
+		}
+	} while (!(wlanConnected && brokerConnected));
+
+	LED_Pattern(false, LED_PATTERN_ROLLING, MILLISECONDS(500));
+	LED_On(LED_INBUILT_RED);
+	LED_On(LED_INBUILT_ORANGE);
+
+	printf("[INFO] - callConnect2BrokerFromTelemetryPublishing : WLAN & broker connected.\n\r");
 
 	resumeTasks();
 }
@@ -1131,7 +1154,8 @@ Retcode_T startTasks(void) {
 		}
 }
 
-#ifdef USE_RESPONSE_QUEUE
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
 				!= xTaskCreate(sendResponse, (const char* const ) "ResponseTask",
@@ -1175,13 +1199,15 @@ Retcode_T suspendTasks(){
 	root = cJSON_CreateArray();
 	xSemaphoreGive(jsonPayloadHandle);
 
+#warning TODO: delete after tests
 #ifdef ORIGINAL
 	vTaskSuspend(AppControllerHandle);
 	vTaskDelay(MILLISECONDS(500));
 	vTaskSuspend(TelemetryHandle);
 	vTaskDelay(MILLISECONDS(500));
 #endif
-#ifdef USE_RESPONSE_QUEUE
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 	//vTaskSuspend(ResponseHandle);
 #endif
 	return retcode;
@@ -1197,6 +1223,7 @@ Retcode_T resumeTasks() {
 		Retcode_RaiseError(retcode);
 		assert(0);
 	}
+#warning TODO: delete after tests
 #ifdef ORIGINAL
 	vTaskResume(AppControllerHandle);
 	vTaskDelay(MILLISECONDS(500));
@@ -1204,7 +1231,8 @@ Retcode_T resumeTasks() {
 	vTaskResume(TelemetryHandle);
 	vTaskDelay(MILLISECONDS(500));
 #endif
-#ifdef USE_RESPONSE_QUEUE
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 	//vTaskResume(ResponseHandle);
 #endif
 
@@ -1360,7 +1388,21 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 	BCDS_UNUSED(param2);
 	vTaskDelay(pdMS_TO_TICKS(5000));
 	Retcode_T retcode = LED_Setup();
+
+	LED_Pattern(true, LED_PATTERN_ROLLING, MILLISECONDS(500));
+
 	retcode = WLAN_Enable();
+
+	// waits forever until we have WLAN connectivity
+	while (  (WLAN_DISCONNECTED == WlanConnect_GetStatus()) && (NETWORKCONFIG_IP_NOT_ACQUIRED == NetworkConfig_GetIpStatus()) ){
+		printf("[WARNING] - AppControllerEnable : no WLAN connectivity, waiting for 1 second ...\n\r");
+		vTaskDelay(MILLISECONDS(1000));
+	}
+	retcode = RETCODE_OK;
+
+	LED_Pattern(false, LED_PATTERN_ROLLING, MILLISECONDS(500));
+
+
 	if (RETCODE_OK == retcode) {
 		retcode = LED_On(LED_INBUILT_RED);
 	}
@@ -1368,7 +1410,30 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 		retcode = ServalPAL_Enable();
 	}
 	if (RETCODE_OK == retcode) {
+		LED_Pattern(true, LED_PATTERN_ROLLING, MILLISECONDS(500));
 		retcode = SNTP_Enable();
+		if(RETCODE_OK == retcode) {
+			// try multiple times until we have a time, otherwise abort
+			int sntpTriesloopCounter = 0;
+			bool sntpSuccess = false;
+			while (!sntpSuccess && sntpTriesloopCounter++ < 1000) {
+				printf("[INFO] - AppControllerEnable: retrieving time from SNTP server, tries: %d\r\n", sntpTriesloopCounter);
+
+				retcode = SNTP_GetTimeFromServer(&sntpTime, 10000L);
+
+				if( RETCODE_OK == retcode ) sntpSuccess = true;
+
+				if(!sntpSuccess) {
+					printf("[INFO] - AppControllerEnable: SNTP server timeout, retrying in 1 second ...\r\n");
+					vTaskDelay(MILLISECONDS(1000));
+				}
+			}
+			if(!sntpSuccess) {
+				printf("[FATAL ERROR] - AppControllerEnable: SNTP time synchronization failed. aborting ...\r\n");
+				assert(0);
+			}
+			LED_Pattern(false, LED_PATTERN_ROLLING, MILLISECONDS(500));
+		}
 	}
 	if (RETCODE_OK == retcode) {
 		retcode = MQTT_Enable();
@@ -1377,35 +1442,36 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 	if (RETCODE_OK == retcode) {
 		retcode = Sensor_Enable();
 	}
-	// try multiple times until we have a time, otherwise abort
-    int sntpTriesloopCounter = 0;
-	bool sntpSuccess = false;
-    while (!sntpSuccess && sntpTriesloopCounter++ < 10) {
-    	printf("[INFO] - AppControllerEnable: retrieving time from SNTP server, tries: %d\r\n", sntpTriesloopCounter);
-
-    	retcode = SNTP_GetTimeFromServer(&sntpTime, 10000L);
-
-    	if( RETCODE_OK == retcode ) sntpSuccess = true;
-
-    	if(!sntpSuccess) printf("[INFO] - AppControllerEnable: SNTP server timeout, retrying ...\r\n");
-	}
-    if(!sntpSuccess) {
-		printf("[FATAL ERROR] - AppControllerEnable: SNTP time synchronization failed. aborting ...\r\n");
-		assert(0);
-    }
 
 	tickOffset = xTaskGetTickCount();
 
 	if(RETCODE_OK == retcode) {
-		retcode = connect2Broker();
-		if(RETCODE_OK == retcode) {
-			retcode = LED_On(LED_INBUILT_ORANGE);
-		} else {
-			// not the end of it. it will try to connect again when publishing
-			retcode = LED_Off(LED_INBUILT_RED);
-		}
+		// waits forever until we have full connectivity
+		LED_Pattern(true, LED_PATTERN_ROLLING, MILLISECONDS(500));
+		bool wlanConnected = false;
+		bool brokerConnected = false;
+		do {
+			wlanConnected = !( (WLAN_DISCONNECTED == WlanConnect_GetStatus()) || (NETWORKCONFIG_IP_NOT_ACQUIRED == NetworkConfig_GetIpStatus()));
+			if(!wlanConnected) {
+				printf("[WARNING] - AppControllerEnable : no WLAN connectivity, waiting for 5 seconds ...\n\r");
+				vTaskDelay(MILLISECONDS(5000));
+			} else {
+				printf("[INFO] - AppControllerEnable : WLAN connected. trying to connect to broker ...\n\r");
+				Retcode_T retcode = connect2Broker();
+				if(RETCODE_OK == retcode) brokerConnected = true;
+				else {
+					printf("[WARNING] - AppControllerEnable : MQTT connect to broker failed, waiting for 5 secs ...\n\r");
+					vTaskDelay(MILLISECONDS(5000));
+				}
+			}
+		} while (!(wlanConnected && brokerConnected));
+
+		LED_Pattern(false, LED_PATTERN_ROLLING, MILLISECONDS(500));
+
+		retcode = LED_On(LED_INBUILT_ORANGE);
 	}
 
+#warning TODO: delete after tests
 #ifdef ORIGINAL
 	if (RETCODE_OK == retcode) {
 		retcode = MQTT_ConnectToBroker(&MqttConnectInfo,
@@ -1610,7 +1676,8 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 	char* statusTopic = formatTopic(baseTopic, "$update/iot-control/%s/device/%s/status");
 	MqttPublishResponse.Topic = statusTopic;
 
-#ifdef USE_RESPONSE_QUEUE
+#warning TODO: delete after tests
+#ifdef ORIGINAL_USE_RESPONSE_QUEUE
 	//responseQueue = xQueueCreate(3,64);
 	responseQueue = xQueueCreate(RESPONSE_QUEUE_DEPTH,RESPONSE_QUEUE_DATA_BUFFER_LENGTH);
 	if (responseQueue == NULL){
