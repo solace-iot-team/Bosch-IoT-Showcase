@@ -18,7 +18,14 @@ export BCDS_FREERTOS_INCLUDE_AWS=1
 #export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP
 # add debug info to the metrics when publishing 
 #export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP_PUBLISH 
-export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH
+
+# in order to use task state:
+# INCLUDE_eTaskGetState must be defined as 1 in FreeRTOSConfig.h
+#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP_TASK_STATE
+
+# switch all off
+export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH -DNDEBUG_XDK_APP_TASK_STATE
+#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH
 
 
 # Macro for server cetificate which is used for secure communication.

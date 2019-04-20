@@ -47,6 +47,9 @@
 #include "XDK_SNTP.h"
 #include "XDK_ServalPAL.h"
 #include "FreeRTOS.h"
+#ifndef NDEBUG_XDK_APP_TASK_STATE
+#include "FreeRTOSConfig.h"
+#endif
 #include "semphr.h"
 #include "task.h"
 #include <time.h>
@@ -378,11 +381,9 @@ void readConfigFromFile(void){
 Retcode_T suspendTasks(void);
 
 /**
- * Declar resumeTasks - resumes all tasks suspended by suspendTasks
+ * Declare resumeTasks - resumes all tasks suspended by suspendTasks
  */
 Retcode_T resumeTasks(void);
-
-Retcode_T createResumeTasksTimerTask(void);
 
 /**
  * Construct and emit a response status message straight without the queue
@@ -781,6 +782,8 @@ static void publishTelemetryMessage(void * param1, uint32_t param2) {
     BCDS_UNUSED(param1);
     BCDS_UNUSED(param2);
 
+	//printf("[INFO] - publishTelemetryMessage: starting...\r\n");
+
     // check if we can modify root, if not, return
 	if (pdFALSE == xSemaphoreTake(jsonPayloadHandle, (TickType_t ) publishFrequency) ) {
 		printf("[INFO] - publishTelemetryMessage: BLOCKED by Semaphore. Not sending.\r\n");
@@ -797,8 +800,15 @@ static void publishTelemetryMessage(void * param1, uint32_t param2) {
 #ifndef NDEBUG_XDK_APP
 		printf("[DEBUG] - publishTelemetryMessage: sampleCount=0, nothing to publish.\r\n");
 #endif
+
+#ifndef NDEBUG_XDK_APP_TASK_STATE
+		eTaskState AppControllerHandleState = eTaskGetState(AppControllerHandle);
+		printf("[INFO] - publishTelemetryMessage: AppControllerHandle state = %i.\r\n", AppControllerHandleState);
+#endif
+
+
 		xSemaphoreGive(jsonPayloadHandle);
-		vTaskDelay(MILLISECONDS(50));
+		//vTaskDelay(MILLISECONDS(50));
     	return;
     }
 
@@ -921,6 +931,12 @@ static void SampleTask(void* pvParameters) {
 #ifndef NDEBUG_XDK_APP
 				//vTaskDelay(MILLISECONDS(500));
 #endif
+
+#ifndef NDEBUG_XDK_APP_TASK_STATE
+		eTaskState TelemetryHandleState = eTaskGetState(TelemetryHandle);
+		printf("[INFO] - SampleTask: TelemetryHandleState state = %i.\r\n", TelemetryHandleState);
+#endif
+
 			} else {
 				// now we are good to go
 
@@ -998,7 +1014,8 @@ static void SampleTask(void* pvParameters) {
     } // while
 }
 
-Retcode_T startTasks(Retcode_T retcode) {
+Retcode_T startTasks(void) {
+	Retcode_T retcode = RETCODE_OK;
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
 				!= xTaskCreate(SampleTask, (const char* const ) "SampleTask",
@@ -1036,18 +1053,39 @@ Retcode_T startTasks(Retcode_T retcode) {
 	return retcode;
 }
 
+void deleteTasks(void) {
+	vTaskDelete(AppControllerHandle);
+	vTaskDelete(TelemetryHandle);
+}
+
+
+static uint32_t suspendTasksCounter = 0;
 /**
  * Suspend active tasks - used to avoid race conoditions on globale variables
  */
 Retcode_T suspendTasks(){
 	Retcode_T retcode = RETCODE_OK;
-	// it seems that with suspend/resume tasks
-	// the processor starts misbehaving over time
-	// by introducing the delay, it works better, not perfectly.
-	vTaskDelay(MILLISECONDS(500));
+	printf("[DEBUG] - suspendTasks: counter=%ld\r\n", ++suspendTasksCounter);
+
+	// grab the mutex
+	// otherwise we'll get an assert if the holder of a mutex doesn't exist any more
+	// choosing max holding time * 1.5 - this could be done more precisely..
+	if (pdFALSE == xSemaphoreTake(jsonPayloadHandle, MILLISECONDS(1500)) ) {
+		printf("[FATAL ERROR] - suspendTasks: BLOCKED by Semaphore. Can't suspend tasks.\r\n");
+		assert(0);
+	}
+	deleteTasks();
+	// now clean up the shared resources and give mutex back so resume can start
+	cJSON_Delete(root);
+	root = cJSON_CreateArray();
+	xSemaphoreGive(jsonPayloadHandle);
+
+#ifdef ORIGINAL
 	vTaskSuspend(AppControllerHandle);
 	vTaskDelay(MILLISECONDS(500));
 	vTaskSuspend(TelemetryHandle);
+	vTaskDelay(MILLISECONDS(500));
+#endif
 #ifdef USE_RESPONSE_QUEUE
 	//vTaskSuspend(ResponseHandle);
 #endif
@@ -1056,21 +1094,59 @@ Retcode_T suspendTasks(){
 /**
  * Resume all suspended tasks
  */
-Retcode_T resumeTasks(){
+Retcode_T resumeTasks() {
 	Retcode_T retcode = RETCODE_OK;
-// Note:
-	// sometimes, it seems as if some tasks are not resumed again
-	// effect: XDK 'hangs'
-	// solution: send a new command in
-	vTaskDelay(MILLISECONDS(500));
+	retcode = startTasks();
+	if(RETCODE_OK != retcode) {
+		printf("[FATAL ERROR] - resumeTasks: failed to start tasks again.\r\n");
+		Retcode_RaiseError(retcode);
+		assert(0);
+	}
+#ifdef ORIGINAL
 	vTaskResume(AppControllerHandle);
 	vTaskDelay(MILLISECONDS(500));
+
 	vTaskResume(TelemetryHandle);
+	vTaskDelay(MILLISECONDS(500));
+#endif
 #ifdef USE_RESPONSE_QUEUE
 	//vTaskResume(ResponseHandle);
 #endif
+
+#ifndef NDEBUG_XDK_APP_TASK_STATE
+	// use this for debugging only
+
+	//INCLUDE_eTaskGetState must be defined as 1 in FreeRTOSConfig.h
+	eTaskState AppControllerHandleState = eTaskGetState(AppControllerHandle);
+	printf("[INFO] - resumeTasks: AppControllerHandle state = %i.\r\n", AppControllerHandleState);
+
+	eTaskState TelemetryHandleState = eTaskGetState(TelemetryHandle);
+	printf("[INFO] - resumeTasks: TelemetryHandle state = %i.\r\n", TelemetryHandleState);
+
+
+#ifdef RTOS_INFO
+	typedef enum
+	{
+		eRunning = 0,	/* A task is querying the state of itself, so must be running. */
+		eReady = 1,			/* The task being queried is in a read or pending ready list. */
+		eBlocked = 2,		/* The task being queried is in the Blocked state. */
+		eSuspended = 3,		/* The task being queried is in the Suspended state, or is in the Blocked state with an infinite time out. */
+		eDeleted,		/* The task being queried has been deleted, but its TCB has not yet been freed. */
+		eInvalid			/* Used as an 'invalid state' value. */
+	} eTaskState;
+
+	/*
+		TaskStatus_t AppControllerTaskStatus;
+		// configUSE_TRACE_FACILITY must be defined as 1 in FreeRTOSConfig.h
+		vTaskGetInfo(AppControllerHandle, &AppControllerTaskStatus, pdTRUE, eInvalid);
+		eTaskState eCurrentState;
+	*/
+#endif
+#endif
+
 	return retcode;
 }
+
 
 /**
  * Sets up the MQTT subscriptions for commands and configuration
@@ -1255,7 +1331,7 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 
 
 	if (RETCODE_OK == retcode) {
-		retcode = startTasks(retcode);
+		retcode = startTasks();
 	}
 	if (RETCODE_OK != retcode) {
 		printf("AppControllerEnable : Failed \r\n");
