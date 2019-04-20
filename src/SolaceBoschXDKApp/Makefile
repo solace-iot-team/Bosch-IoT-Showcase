@@ -15,17 +15,22 @@ export BCDS_FREERTOS_INCLUDE_AWS=1
 # Flag to switch on/off debugging info & code
 # defined: switched off
 # not defined: switched on
-#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP
+#export BCDS_CFLAGS_COMMON_DEBUG = -DNDEBUG_XDK_APP
 # add debug info to the metrics when publishing 
-#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP_PUBLISH 
+#export BCDS_CFLAGS_COMMON_DEBUG = -DNDEBUG_XDK_APP_PUBLISH 
 
 # in order to use task state:
 # INCLUDE_eTaskGetState must be defined as 1 in FreeRTOSConfig.h
-#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP_TASK_STATE
+#export BCDS_CFLAGS_COMMON_DEBUG = -DNDEBUG_XDK_APP_TASK_STATE
 
 # switch all off
-export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH -DNDEBUG_XDK_APP_TASK_STATE
-#export BCDS_CFLAGS_COMMON = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH
+export BCDS_CFLAGS_COMMON_DEBUG = -DNDEBUG_XDK_APP -DNDEBUG_XDK_APP_PUBLISH -DNDEBUG_XDK_APP_TASK_STATE
+
+#enable re-connect testing
+#export BCDS_CFLAGS_COMMON_TEST = -DRE_CONNECT_TESTING
+
+#set the final flags
+export BCDS_CFLAGS_COMMON = $(BCDS_CFLAGS_COMMON_DEBUG) $(BCDS_CFLAGS_COMMON_TEST)
 
 
 # Macro for server cetificate which is used for secure communication.

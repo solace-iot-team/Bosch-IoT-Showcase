@@ -54,6 +54,10 @@
 #include "BCDS_Retcode.h"
 #include "BCDS_CmdProcessor.h"
 
+#ifdef RE_CONNECT_TESTING
+void * getMqttSessionPtr(void);
+#endif
+
 /**
  * @brief   Enum to represent the supported MQTT types.
  */

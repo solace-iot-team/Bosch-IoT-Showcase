@@ -429,8 +429,9 @@ Retcode_T sendStatusResponseDirectly(cJSON * statusResponseInputJson) {
 	printf("[DEBUG] - sendStatusResponseDirectly: MqttPublishResponse.Payload:\r\n%s\r\n", MqttPublishResponse.Payload);
 #endif
 
-	//printf("[TODO] - sendResponse: now do the publishing ...\r\n");
 	(void)MQTT_PublishToTopic(&MqttPublishResponse, MQTT_PUBLISH_TIMEOUT_IN_MS);
+	// no need to check and re-connect here, this is done in the main publishing task
+
 	free(date);
 	return retcode;
 }
@@ -773,6 +774,68 @@ static void subscriptionCallBack(MQTT_SubscribeCBParam_T param) {
 	cJSON_Delete(inComingMsg);
 }
 
+
+static Retcode_T connect2Broker(void) {
+
+	Retcode_T retcode = RETCODE_OK;
+
+	printf("[INFO] - connect2Broker: connecting to mqtt broker...\r\n");
+
+	LED_Pattern(true, LED_PATTERN_ROLLING, MILLISECONDS(500));
+
+	bool connected = false;
+	int i;
+	for (i = 1; i <= 10; i++){
+		retcode = MQTT_ConnectToBroker(&MqttConnectInfo, MQTT_CONNECT_TIMEOUT_IN_MS);
+		if (RETCODE_OK != retcode) {
+			printf("[WARNING] - connect2Broker : MQTT connection to the broker failed, attempt %i\n\r", i);
+			Retcode_RaiseError(retcode);
+		} else {
+			connected = true;
+			break;
+		}
+		// TODO: should we wait same time as MQTT library timeout?
+		vTaskDelay(MILLISECONDS(MQTT_CONNECT_TIMEOUT_IN_MS * i));
+		//vTaskDelay(MILLISECONDS(i*500));
+	}
+	if (!connected) {
+		printf("[ERROR] - connect2Broker : MQTT re-connection to the broker failed. \n\r");
+		Retcode_RaiseError(retcode);
+	} else
+		printf("[INFO] - connect2Broker : connected (%i attempts).\n\r", i);
+
+	LED_Pattern(false, LED_PATTERN_ROLLING, MILLISECONDS(500));
+
+	LED_Toggle(LED_INBUILT_ORANGE);
+	LED_Toggle(LED_INBUILT_YELLOW);
+
+	return retcode;
+}
+static void callConnect2BrokerFromTelemetryPublishing(void * param1, uint32_t param2) {
+	BCDS_UNUSED(param1);
+	BCDS_UNUSED(param2);
+
+	suspendTasks();
+
+	Retcode_T retcode = connect2Broker();
+	if (RETCODE_OK != retcode) {
+		// what is the best action here?
+		// reset the board...
+		printf("[FATAL ERROR] - callConnect2BrokerFromTelemetryPublishing : MQTT re-connection to the broker failed, re-booting in 5 secs ...\n\r");
+		vTaskDelay(MILLISECONDS(5000));
+		BSP_Board_SoftReset();
+	}
+
+	resumeTasks();
+}
+static Retcode_T enqueueConnect2BrokerFromTelemetryPublishing(void) {
+	Retcode_T retcode = RETCODE_OK;
+
+	retcode = CmdProcessor_Enqueue(AppCmdProcessor, callConnect2BrokerFromTelemetryPublishing, NULL, UINT32_C(0));
+
+	return retcode;
+}
+
 /**
  *
  * Publishes telemetry data
@@ -833,7 +896,38 @@ static void publishTelemetryMessage(void * param1, uint32_t param2) {
 		//vTaskDelay(MILLISECONDS(500));
 #endif
 
+#ifdef RE_CONNECT_TESTING
+		static int sequenceNumber = 0;
+		sequenceNumber++;
+		if( (sequenceNumber % 100) == 0) {
+			/*
+			 * Serval_Mqtt.h
+			 *   - retcode_t Mqtt_disconnect(MqttSession_T* session);
+			 * Mqtt.c:
+			 *   - Mqtt_disconnect() implementation
+			 *
+			 * Added:
+			 *  - XDK_MQTT.h
+			 *     - void * getMqttSessionPtr(void);
+			 *  - MQTT.c
+			 *     - void * getMqttSessionPtr(void) { return &MqttSession; }
+			 */
+			printf("[TEST] - publishTelemetryMessage: disconnecting from broker and wait for 5 seconds ...\r\n");
+			(void)Mqtt_disconnect(getMqttSessionPtr());
+			vTaskDelay(MILLISECONDS(5000));
+		}
+#endif
 		Retcode_T retcode = MQTT_PublishToTopic(&MqttPublishInfo, MQTT_PUBLISH_TIMEOUT_IN_MS);
+		if(RETCODE_OK != retcode) {
+			retcode = enqueueConnect2BrokerFromTelemetryPublishing();
+			if(RETCODE_OK != retcode) {
+				printf("[FATAL ERROR] - publishTelemetryMessage: enqueueConnect2BrokerFromTelemetryPublishing() failed.\r\n");
+				Retcode_RaiseError(retcode);
+				assert(0);
+			}
+		}
+#warning TODO: delete after tests
+#ifdef ORIGINAL
 		if (RETCODE_OK != retcode) {
 			// re-connect if disconnected
 			printf("[INFO] - publishTelemetryMessage: re-connecting to mqtt broker.\r\n");
@@ -859,6 +953,7 @@ static void publishTelemetryMessage(void * param1, uint32_t param2) {
 			LED_Toggle(LED_INBUILT_YELLOW);
 			resumeTasks();
 		}
+#endif
 		MqttPublishInfo.QoS = 1UL;
 	} else {
 		printf("[WARNING] - publishTelemetryMessage: not publishing, because:\r\n");
@@ -1301,6 +1396,17 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 
 	tickOffset = xTaskGetTickCount();
 
+	if(RETCODE_OK == retcode) {
+		retcode = connect2Broker();
+		if(RETCODE_OK == retcode) {
+			retcode = LED_On(LED_INBUILT_ORANGE);
+		} else {
+			// not the end of it. it will try to connect again when publishing
+			retcode = LED_Off(LED_INBUILT_RED);
+		}
+	}
+
+#ifdef ORIGINAL
 	if (RETCODE_OK == retcode) {
 		retcode = MQTT_ConnectToBroker(&MqttConnectInfo,
 		MQTT_CONNECT_TIMEOUT_IN_MS);
@@ -1316,6 +1422,7 @@ static void AppControllerEnable(void * param1, uint32_t param2) {
 		retcode = LED_Off(LED_INBUILT_RED);
 	}
 	vTaskDelay(MILLISECONDS(MQTT_CONNECT_TIMEOUT_IN_MS));
+#endif
 
 	if (RETCODE_OK == retcode) {
 		if (pdPASS
