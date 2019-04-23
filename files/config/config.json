@@ -1,7 +1,7 @@
 {
-	"sntpURL":"0.uk.pool.ntp.org",
+	"sntpURL":"change_me: e.g. 0.uk.pool.ntp.org or 0.north-america.pool.ntp.org",
 	"sntpPort": 123,
-	"brokerURL":"change_me, e.g. <server>.messaging.solace.cloud",
+	"brokerURL":"change_me: ask which broker is best for your region",
 	"brokerPort": 1883,
 	"brokerUsername":"change_me, e.g. solace-cloud-client",
 	"brokerPassword":"change_me",
