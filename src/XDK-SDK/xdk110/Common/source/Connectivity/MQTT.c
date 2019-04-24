@@ -99,6 +99,9 @@ static MQTT_Setup_T MqttSetupInfo;
 static MQTT_SubscribeCB_T IncomingPublishNotificationCB;
 /**< MQTT session instance */
 static MqttSession_T MqttSession;
+#ifdef RE_CONNECT_TESTING
+void * getMqttSessionPtr(void) { return &MqttSession; }
+#endif
 /**< MQTT connection status */
 static bool MqttConnectionStatus = false;
 /**< MQTT subscription status */
