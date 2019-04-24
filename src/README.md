@@ -47,21 +47,19 @@ This creates the binary SolaceBoschXDKApp.bin. Note that it is compiled in debug
 
 ### Copy the Config file
 
-Enter the connection info & passwords in the file:
-Bosch-IoT-Showcase/files/config/config.json
+Copy the configuration file: Bosch-IoT-Showcase/files/config/config.json
+(https://github.com/solace-iot-team/Bosch-IoT-Showcase/blob/master/files/config/config.json)
+
+Change the parameters according to your device and region.
 
 <p align="left"><img src="../doc/images/config.png" width=600 /></p>
 
-Change the following:
-- "wlanSSID":"the-WIFI-SSID"
-- "wlanPSK":"the-password"
-- "brokerPassword":"the-solace-cloud-broker-password"
 
 **_Note: Contact ricardo.gomez-ulmke@solace.com or swen-helge.huber@solace.com to get the password for the broker._**
 
 ... wait for the response ...
 
-Now copy the ```` config.json ```` to the SD card and insert it into the XDK.
+Now copy the `` config.json `` to the SD card and insert it into the XDK.
 
 **_Note: be careful when inserting the SD card into the XDK! When inserted incorrectly, the card may fall into the device._**
 
@@ -122,57 +120,15 @@ Make a note of the device Id, choose a nickname and send us the Id + nickname to
 
 ### Subscribe to the Metrics Event Stream
 
+For details on how to use MQTT Box, see the wiki: Tooling->Testing.
+
 - Launch your MQTT test client.
 - Connect to the same Solace Cloud broker as provided in the config.json file.
-- Subscribe to the metrics stream from your device
-
-#### Create the MQTT Client
-
-Click **Create MQTT Client**:
-<p align="left"><img src="../doc/images/mqtt-box-create-client.png" width=500 /></p>
-
-Enter the values as shown below:
-* **MQTT Client Name**: 'descriptive name of your choice', for example:
-  - ````The Bosch-XDK110-Demo Edge Broker Client````
-* **Protocol**:
-  - ````mqtt / tcp````
-* **Username**:
-  - ````the username from the config.json, e.g. "brokerUsername":"solace-cloud-client"````
-* **MQTT Client Id**:
-  - ````from config.json, e.g. "mqttClientId":"default"`````
-* **Host**:
-  - format: &lt;host>:&lt;port>
-  - ````from config.json: "brokerURL":"the host" & "brokerPort": the-port-number````
-* **Password**:
-  - the password for the broker
-
-Click **Save**.
-
-<p align="left"><img src="../doc/images/mqtt-client-settings.png" /></p>
-
-You should see the following screen:
-
-<p align="left"><img src="../doc/images/mqtt-box-connected.png" /></p>
-
-#### Subscribe to the Metrics
-
-The topic template is as follows:
-````
-$create/iot-event/<baseTopic>/<deviceId>/metrics
-
-where baseTopic is defined in the config.json, for example:
-
-	"baseTopic": "BCW/solacebooth/racetrack"
-
-so, the resulting topic would look as follows:
-
-$create/iot-event/BCW/solacebooth/racetrack/<deviceId>/metrics
+- Subscribe to the metrics stream from your device, using the following topic string:
 
 ````
-
-Enter the topic and click **Subscribe**.
-
-<p align="left"><img src="../doc/images/mqtt-box-subscribe-to-metrics.png" width=500 /></p>
+$create/iot-event/<your-baseTopic>/<your-deviceId>/metrics
+````
 
 The message should look similar to this:
 
