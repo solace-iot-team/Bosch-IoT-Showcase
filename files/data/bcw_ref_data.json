@@ -65,12 +65,12 @@
               "id": "racetrack-sl",
               "devices": [
                 {
-                  "name": "Red Car",
-                  "id": "xdk-id-4-sl-red-car"
+                  "name": "SL Red Car",
+                  "id": "24d11f0258e86b15"
                 },
                 {
-                  "name": "Blue Car",
-                  "id": "xdk-id-4-sl-blue-car"
+                  "name": "SL Blue Car",
+                  "id": "24d11f0258e87b7b"
                 }
               ]
             },
@@ -80,7 +80,7 @@
               "devices": [
                 {
                   "name": "Mike-1",
-                  "id": "xdk-id-4-mike-1"
+                  "id": "24bd97035695f057"
                 },
                 {
                   "name": "Jeremy-1",
@@ -102,29 +102,29 @@
           "productionLines": [
             {
               "name": "Widget Line",
-              "id": "widgetline",
+              "id": "widgetline-id",
               "devices": [
                 {
                   "name": "Widget Maker",
-                  "id": "241d620158cd0095"
+                  "id": "widget-maker-id"
                 },
                 {
                   "name": "Widget Polisher",
-                  "id": "241d620158cd0096"
+                  "id": "widget-polisher-id"
                 }
               ]
             },
             {
               "name": "ElektroMotor Line",
-              "id": "elektromotor-line",
+              "id": "elektromotor-line-id",
               "devices": [
                 {
                   "name": "Batterien",
-                  "id": "241d620158cd0011"
+                  "id": "batterien-id"
                 },
                 {
                   "name": "Motor",
-                  "id": "241d620158cd0012"
+                  "id": "motor-id"
                 }
               ]
             }
@@ -132,19 +132,19 @@
         },
         {
           "name": "Boeblingen Werk 1",
-          "id": "bob-w1",
+          "id": "bob-w1-id",
           "productionLines": [
             {
               "name": "Bohrmaschine",
-              "id": "bohr-1",
+              "id": "bohr-1-id",
               "devices": [
                 {
                   "name": "Getriebe",
-                  "id": "241d620158cd0022"
+                  "id": "getriebe-id"
                 },
                 {
                   "name": "Motor",
-                  "id": "241d620158cd0023"
+                  "id": "motor-id-2"
                 }
               ]
             }
