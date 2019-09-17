@@ -1,6 +1,46 @@
 {
   "regions": [
     {
+      "name": "ATC",
+      "id": "atc-id",
+      "locations": [
+        {
+          "name": "ATC Booth",
+          "id": "atc-booth-id",
+          "productionLines": [
+            {
+              "name": "Race Track",
+              "id": "atc-race-track-id",
+              "devices": [
+                {
+                  "name": "AltairXDK1",
+                  "id": "24cc11045695f048"
+                },
+                {
+                  "name": "AltairXDK2",
+                  "id": "242a95065695cb19"
+                }
+              ]
+            },
+            {
+              "name": "Hand Held",
+              "id": "atc-handheld-solace",
+              "devices": [
+                {
+                  "name": "Ricardo-1",
+                  "id": "24d11f0358cd5d9a"
+                },
+                {
+                  "name": "Ricardo-2",
+                  "id": "2449cc0358e8ba58"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "BCW",
       "id": "BCW",
       "locations": [
@@ -26,14 +66,6 @@
               "name": "Hand Held",
               "id": "handheld-solace",
               "devices": [
-                {
-                  "name": "Ricardo-1",
-                  "id": "24d11f0358cd5d9a"
-                },
-                {
-                  "name": "Ricardo-2",
-                  "id": "2449cc0358e8ba58"
-                },
                 {
                   "name": "Swen-1",
                   "id": "24d11f0258e8ba9f"
