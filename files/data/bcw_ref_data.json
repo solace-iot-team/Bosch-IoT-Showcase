@@ -27,10 +27,6 @@
               "id": "atc-handheld-solace",
               "devices": [
                 {
-                  "name": "Ricardo-1",
-                  "id": "24d11f0358cd5d9a"
-                },
-                {
                   "name": "Ricardo-2",
                   "id": "2449cc0358e8ba58"
                 }
@@ -66,6 +62,10 @@
               "name": "Hand Held",
               "id": "handheld-solace",
               "devices": [
+                {
+                  "name": "Ricardo-1",
+                  "id": "24d11f0358cd5d9a"
+                },
                 {
                   "name": "Swen-1",
                   "id": "24d11f0258e8ba9f"
