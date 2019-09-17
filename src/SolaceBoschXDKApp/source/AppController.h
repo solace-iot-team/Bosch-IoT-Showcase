@@ -58,7 +58,7 @@
  * WLAN_SSID is the WIFI network name where user wants connect the XDK device.
  * Make sure to update the WLAN_PSK constant according to your required WIFI network.
  */
-#define WLAN_SSID                           "BTHub5-3X26"
+#define WLAN_SSID                           "change-me"
 
 /**
  * WLAN_PSK is the WIFI router WPA/WPA2 password used at the Wifi network connection.
@@ -116,7 +116,7 @@
 /**
  * APP_MQTT_BROKER_HOST_URL is the MQTT broker host address URL.
  */
-#define APP_MQTT_BROKER_HOST_URL            "mrred4fjoz.messaging.solace.cloud"
+#define APP_MQTT_BROKER_HOST_URL            "change-me.messaging.solace.cloud"
 
 
 /**

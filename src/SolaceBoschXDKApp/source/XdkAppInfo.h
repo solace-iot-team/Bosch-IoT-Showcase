@@ -56,14 +56,23 @@
 /**< Main command processor task queue length */
 #define TASK_Q_LEN_MAIN_CMD_PROCESSOR               (UINT32_C(10))
 
-/**< Application controller task priority */
-#define TASK_PRIO_APP_CONTROLLER                    (UINT32_C(3))
-#define TASK_PRIO_SUBSCRIBER_TASK					(UINT32_C(3))
-//#define TASK_PRIO_SUBSCRIBER_TASK					(UINT32_C(4))
+/** Priority Sets **/
+/** SET-1 **/
 #define TASK_PRIO_SAMPLE_TASK						(UINT32_C(3))
 #define TASK_PRIO_PUBLISH_TELEMETRY_TASK			(UINT32_C(4))
-#define TASK_PRIO_SEND_RESPONSE_TASK				(UINT32_C(2))
-//#define TASK_PRIO_SEND_RESPONSE_TASK				(UINT32_C(4))
+#define TASK_PRIO_SUBSCRIBER_TASK					(UINT32_C(3))
+// not used any more
+//#define TASK_PRIO_SEND_RESPONSE_TASK				(UINT32_C(2))
+
+#ifdef NOT_USED
+/** SET-2 **/
+#define TASK_PRIO_SAMPLE_TASK						(UINT32_C(2))
+#define TASK_PRIO_PUBLISH_TELEMETRY_TASK			(UINT32_C(3))
+#define TASK_PRIO_SUBSCRIBER_TASK					(UINT32_C(3))
+#define TASK_PRIO_SEND_RESPONSE_TASK				(UINT32_C(4))
+#endif
+
+
 
 /**< Application controller task stack size */
 #define TASK_STACK_SIZE_APP_CONTROLLER              (UINT32_C(1200))
@@ -87,6 +96,7 @@ enum XDK_App_Retcode_E
 {
     RETCODE_NODE_IPV4_IS_CORRUPTED = RETCODE_XDK_APP_FIRST_CUSTOM_CODE,
     RETCODE_NODE_WLAN_CONNECTION_IS_LOST,
+	RETCODE_INVALID_CONFIG,
 };
 
 #endif /* XDK_APPINFO_H_ */

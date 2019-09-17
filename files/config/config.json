@@ -3,9 +3,9 @@
 	"sntpPort": 123,
 	"brokerURL":"change_me: ask which broker is best for your region",
 	"brokerPort": 1883,
-	"brokerUsername":"solace-cloud-client",
+	"brokerUsername":"change_me, e.g. solace-cloud-client",
 	"brokerPassword":"change_me",
-	"mqttClientId":"default",
+	"mqttClientId":"change_me, e.g. default",
 	"wlanSSID":"change_me",
 	"wlanPSK":"change_me",
 	"baseTopic": "change_me, see: https://github.com/solace-iot-team/Bosch-IoT-Showcase/wiki/topic-templating"
