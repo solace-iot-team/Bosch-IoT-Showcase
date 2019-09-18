@@ -1383,22 +1383,22 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 	deviceId = (char *) malloc(sz0 + 1);
 	snprintf(deviceId, sz0 + 1, "%08x%08x", serialUnique1, serialUnique0);
 	MqttConnectInfo.ClientId = deviceId;
-	char* theTopic = formatTopic(baseTopic, "$create/iot-event/%s/%s/metrics");
+	char* theTopic = formatTopic(baseTopic, "CREATE/iot-event/%s/%s/metrics");
 	topic = theTopic;
 	MqttPublishInfo.Topic = theTopic;
 
-	char* tempTopic = formatTopic(baseTopic, "$create/iot-control/%s/device/%s/command");
+	char* tempTopic = formatTopic(baseTopic, "CREATE/iot-control/%s/device/%s/command");
 	MqttDeviceCommandSubscribeInfoSingleDevice.Topic = tempTopic;
 
-	tempTopic = formatTopic(baseTopic, "$update/iot-control/%s/device/%s/configuration");
+	tempTopic = formatTopic(baseTopic, "UPDATE/iot-control/%s/device/%s/configuration");
 	MqttDeviceConfigurationSubscribeInfoSingleDevice.Topic = tempTopic;
 	const char* iotControlSDeviceCommandTemplate =
-			"$create/iot-control/%s/device/command";
+			"CREATE/iot-control/%s/device/command";
 	tempTopic =formatTopic(baseTopic,
 			iotControlSDeviceCommandTemplate);
 	MqttDeviceCommandSubscribeInfoRegionLocationProductionLine.Topic = tempTopic;
 	const char* iotControlSDeviceConfigurationTemplate =
-			"$update/iot-control/%s/device/configuration";
+			"UPDATE/iot-control/%s/device/configuration";
 	tempTopic =formatTopic(baseTopic,
 			iotControlSDeviceConfigurationTemplate);
 	MqttDeviceConfigurationSubscribeInfoRegionLocationProductionLine.Topic = tempTopic;
@@ -1425,11 +1425,11 @@ void AppController_Init(void * cmdProcessorHandle, uint32_t param2) {
 	tempTopic =formatTopic(newbaseTopic, iotControlSDeviceConfigurationTemplate);
 	MqttDeviceConfigurationSubscribeInfoRegion.Topic = tempTopic;
 
-	MqttDeviceCommandSubscribeAll.Topic = "$create/iot-control/device/command";
+	MqttDeviceCommandSubscribeAll.Topic = "CREATE/iot-control/device/command";
 
-	MqttDeviceConfigurationSubscribeAll.Topic = "$update/iot-control/device/configuration";
+	MqttDeviceConfigurationSubscribeAll.Topic = "UPDATE/iot-control/device/configuration";
 
-	char* statusTopic = formatTopic(baseTopic, "$update/iot-control/%s/device/%s/status");
+	char* statusTopic = formatTopic(baseTopic, "UPDATE/iot-control/%s/device/%s/status");
 	MqttPublishResponse.Topic = statusTopic;
 
 
