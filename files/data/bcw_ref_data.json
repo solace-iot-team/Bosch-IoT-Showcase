@@ -5,12 +5,12 @@
       "id": "atc-id",
       "locations": [
         {
-          "name": "ATC Booth",
-          "id": "atc-booth-id",
+          "name": "Demo Booth Solace",
+          "id": "demobooth-solace",
           "productionLines": [
             {
               "name": "Race Track",
-              "id": "atc-race-track-id",
+              "id": "racetrack-altair",
               "devices": [
                 {
                   "name": "AltairXDK1",
