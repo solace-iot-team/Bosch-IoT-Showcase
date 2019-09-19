@@ -2,7 +2,7 @@
   "regions": [
     {
       "name": "ATC",
-      "id": "atc-id",
+      "id": "ATC",
       "locations": [
         {
           "name": "Demo Booth Solace",
